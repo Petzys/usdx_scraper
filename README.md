@@ -1,5 +1,7 @@
-# USDB Downloader
+# USDX Scraper
 ## Download your favorite songs for Ultrastar Deluxe
+
+UltraStar-Deluxe: https://github.com/UltraStar-Deluxe/USDX 
 
 Parses songs from:
 - Directories with your songs (mp3, wav, m4a)
