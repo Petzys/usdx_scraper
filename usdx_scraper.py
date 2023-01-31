@@ -12,11 +12,11 @@ from spotipy.oauth2 import SpotifyClientCredentials
 
 
 # General
-LOGIN_URL = 'http://usdb.animux.de/index.php?&link=login'
-SONG_URL = 'http://usdb.animux.de/index.php?link=detail&id='
-ZIP_URL = 'http://usdb.animux.de/index.php?&link=ziparchiv'
-ZIP_SAVE_URL = 'http://usdb.animux.de/index.php?&link=ziparchiv&save=1'
-DOWNLOAD_URL = "http://usdb.animux.de/downloads/"
+LOGIN_URL = 'https://usdb.animux.de/index.php?&link=login'
+SONG_URL = 'https://usdb.animux.de/index.php?link=detail&id='
+ZIP_URL = 'https://usdb.animux.de/index.php?&link=ziparchiv'
+ZIP_SAVE_URL = 'https://usdb.animux.de/index.php?&link=ziparchiv&save=1'
+DOWNLOAD_URL = "https://usdb.animux.de/data/downloads"
 
 # Path to the HTML File containing all database links
 DATABASE_URL = "https://usdb.hehoe.de/"
@@ -195,7 +195,7 @@ def create_payload(user:str, password:str) -> str:
 
 # Create personal download URL for http://usdb.animux.de/
 def create_personal_download_url(user:str) -> str:
-    return f"{DOWNLOAD_URL}/{user}'s Playlist.zip"
+    return f"{DOWNLOAD_URL}/{user}'s%20Playlist.zip"
 
 # Download all Textfiles for USDX from http://usdb.animux.de/
 def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str):
@@ -352,7 +352,7 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 
     # usdb.animux Database authentication
     parser.add_argument("-u", "--user", action="store", help="The user to use on http://usdb.animux.de/, required")
-    parser.add_argument("-p", "--password", action="store", help="The password for the user, required (WARNING: Password will be sent UNENCRYPTED via HTTP because http://usdb.animux.de/ ist HTTP-only.)")
+    parser.add_argument("-p", "--password", action="store", help="The password for the user, required")
 
     args = parser.parse_args()
 

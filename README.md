@@ -37,5 +37,5 @@ options:
                         The Client Secret to be used for accessing Spotifies Web API
   -u USER, --user USER  The user to use on http://usdb.animux.de/, required
   -p PASSWORD, --password PASSWORD
-                        The password for the user, required (WARNING: Password will be sent UNENCRYPTED via HTTP because http://usdb.animux.de/ ist HTTP-only.)
+                        The password for the user, required
 ```
