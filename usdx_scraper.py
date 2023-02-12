@@ -65,18 +65,18 @@ class SongSearchItem:
         self.name_tag_tuple = tuple([re.sub(r'^\s+|\s+$', '', tag) for tag in self.name_tag_tuple if not re.match(r"^[ 0-9]+$", tag)])
         self.artist_tag_tuple = tuple([re.sub(r'^\s+|\s+$', '', tag) for tag in self.artist_tag_tuple if not re.match(r"^[ 0-9]+$", tag)])
 
-    def try_separate(self) -> bool:
+    def try_separate(self):
         # Abort if more than one item in name_tag_set
         tag_list = list(self.name_tag_tuple)
         if len(tag_list)>1: 
-            return False
+            return self
         elif "-" in tag_list[0]:
             s = tag_list[0].split("-")
             self.artist_tag_tuple = tuple(s[:-1])
             self.name_tag_tuple = tuple(s[-1:])
-            return True
+            return self
         else:
-            return False
+            return self
 
     def get_list(self) -> list:
         return list(self.name_tag_tuple)+list(self.artist_tag_tuple)
@@ -85,7 +85,19 @@ def raise_error(err_massage:str):
     print(err_massage)
     sys.exit(1)
 
-def parse_spotify(client_id:str, client_secret:str, playlist_identifier:str) -> list[SongSearchItem]:
+# Parses the SONG_SOURCE_DIRECTORY for songs with filetype from SONG_SOURCE_DIRECTORY
+def parse_songs_from_directory(directory:str, filetypes:list) -> list[SongSearchItem]:
+    # Create list with all song names and check for correct file types
+    # The encoding and decoding is done to prevent an error
+    parsed_songs = [os.path.splitext(file)[0].encode("utf-8").decode('utf-8','ignore') for file in os.listdir(directory) if os.path.splitext(file)[1] in filetypes]
+
+    parsed_objects = [SongSearchItem(name_tag=song) for song in parsed_songs]
+    
+    print(f"Successfully parsed all songs from {directory}")
+
+    return parsed_objects
+
+def parse_songs_from_spotify(client_id:str, client_secret:str, playlist_identifier:str) -> list[SongSearchItem]:
     spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
 
     playlist = spotify.playlist_items(playlist_id=playlist_identifier, fields="items(track(name,artists(name)))")
@@ -100,15 +112,11 @@ def parse_spotify(client_id:str, client_secret:str, playlist_identifier:str) -> 
     print(f"Successfully got parsed playlist from Spotify: {playlist_identifier}")
     return search_list
 
-# Parses the SONG_SOURCE_DIRECTORY for songs with filetype from SONG_SOURCE_DIRECTORY
-def parse_songs(directory:str, filetypes:list) -> list[SongSearchItem]:
-    # Create list with all song names and check for correct file types
-    # The encoding and decoding is done to prevent an error
-    parsed_songs = [os.path.splitext(file)[0].encode("utf-8").decode('utf-8','ignore') for file in os.listdir(directory) if os.path.splitext(file)[1] in filetypes]
+def parse_songs_from_textfile(path:str) -> list[SongSearchItem]:
+    with open(file=path, mode="r") as f:
+        entries = f.read().splitlines()
 
-    parsed_objects = [SongSearchItem(name_tag=song) for song in parsed_songs]
-    
-    print(f"Successfully parsed all songs from {directory}")
+    parsed_objects = [SongSearchItem(name_tag=song) for song in entries]
 
     return parsed_objects
 
@@ -120,7 +128,7 @@ def ignore_brackets(s):
     return s
 
 # Strip all entries of the search list from unwanted additions from the ignored_words
-def strip_search_list(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
+def clean_search_list(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     
     for item in search_list:
         item.try_separate()
@@ -131,7 +139,7 @@ def strip_search_list(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     print(f"Successfully stripped search list")
     return (search_list)
 
-def get_database(url:str, output:str):
+def get_html_database(url:str, output:str):
     response = requests.get(url)
     if not response.ok: raise_error("Failed to get HTML Database")
     with open(output, "w", encoding='utf-8') as file:
@@ -140,7 +148,7 @@ def get_database(url:str, output:str):
     return
 
 # Iterate through all links to songs in the HTML database and check for search_list items
-def parse_html(html:str, search_list:list[SongSearchItem]) -> list[list]:
+def search_html_database(html:str, search_list:list[SongSearchItem], find_all_matching:bool) -> list[list]:
     song_list = [];
 
     with open(html, 'r', encoding='utf-8') as input:
@@ -162,7 +170,7 @@ def parse_html(html:str, search_list:list[SongSearchItem]) -> list[list]:
                     # Append only the id of the song to later download
                     song_list.append([parse_qs(urlparse(href).query)['id'][0], title]);
                     # Delete this entry of the search_list
-                    search_list.pop(count)
+                    if not find_all_matching: search_list.pop(count)
                     break;
     
     print(f'Found {len(song_list)} matching songs')
@@ -342,6 +350,9 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     # Input
     parser.add_argument('-i', '--input', action="extend", nargs="+", default=[], help="The path to the directory with all music files to be read")
     parser.add_argument('-s', '--spotify', action="extend", nargs="+", default=[], help="The URL/URI or ID of a Spotify playlist to search for songs, requires client_id and client_secret")
+    parser.add_argument('-it', '--inputTextfile', action="extend", nargs="+", default=[], help="The paths to textfile which contain songs to search for; will enable findAll")
+
+    parser.add_argument('-fa', '--findAll', action="store_true", help="Set to search for ALL songs matching the inputs. Otherwise the parser will try to find exactly one song per search entry")
 
     # Output
     parser.add_argument("-o", "--output", action="store", default="songs", help="The output directory where all songs and their text files should be saved")
@@ -360,6 +371,12 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 
     user_args["input_path"] = args.input
     user_args["spotify_input"] = args.spotify
+    user_args["inputTextfile"] = args.inputTextfile
+
+    user_args["findAll"] = args.findAll
+    if user_args["inputTextfile"]: user_args["findAll"] = True
+
+    input_ways = [user_args["input_path"], user_args["spotify_input"], user_args["inputTextfile"]]
 
     user_args["output_path"] = args.output
 
@@ -369,7 +386,7 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     user_args["user"] = args.user
     user_args["password"] = args.password
 
-    if not (user_args["input_path"] or user_args["spotify_input"]): raise_error("At least one input is required. Exiting...")
+    if not any(input_ways): raise_error("At least one input is required. Exiting...")
     if not (user_args["user"] and user_args["password"]): raise_error("Username and password required. Exiting...")
     if (user_args["spotify_input"] and not (user_args["spotify_id"] and user_args["spotify_secret"])): raise_error("Client ID and secret are required if a Spotify playlist is specified")
 
@@ -387,25 +404,25 @@ def main():
     search_list = []
 
     for source_directory in user_args["input_path"]:
-        # Get songs from SONG_SOURCE_DIRECTORY
-        search_list_part = parse_songs(source_directory, SONG_FILE_TYPES)
-        # Strip those songs from unwanted words and characters
-        search_list_part = strip_search_list(search_list_part)
-        search_list += search_list_part
+        # Get songs from SONG_SOURCE_DIRECTORY and clean those songs from unwanted words and characters
+        search_list += clean_search_list(parse_songs_from_directory(directory=source_directory, filetypes=SONG_FILE_TYPES))
 
     for playlist in user_args["spotify_input"]:
-        search_list += parse_spotify(user_args["spotify_id"], user_args["spotify_secret"], playlist)
+        search_list += parse_songs_from_spotify(user_args["spotify_id"], user_args["spotify_secret"], playlist)
+
+    for textfile in user_args["inputTextfile"]:
+        search_list += [line.try_separate() for line in parse_songs_from_textfile(path=textfile)]
 
     search_list = list(set(search_list))
 
     # Download HTML Database if necessary
     if not os.path.exists(DATABASE_HTML):
         print("Downloading Database HTML...")
-        get_database(DATABASE_URL, DATABASE_HTML)
+        get_html_database(DATABASE_URL, DATABASE_HTML)
 
     # Check the HTML for matches
     print("Filtering Database for search results...")
-    song_list = parse_html(DATABASE_HTML, search_list)
+    song_list = search_html_database(DATABASE_HTML, search_list, find_all_matching=user_args["findAll"])
     # Create cookies based on that
     print("Creating cookies...")
     cookie_list = create_cookies(song_list)

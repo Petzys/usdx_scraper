@@ -6,6 +6,7 @@ UltraStar-Deluxe: https://github.com/UltraStar-Deluxe/USDX
 Parses songs from:
 - Directories with your songs (mp3, wav, m4a)
 - public Spotify Playlists
+- a input file in the format: `Artist - Title`
 
 You can specify multiple inputs at once.
 
