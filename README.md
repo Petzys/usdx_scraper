@@ -30,6 +30,9 @@ options:
                         The path to the directory with all music files to be read
   -s SPOTIFY [SPOTIFY ...], --spotify SPOTIFY [SPOTIFY ...]
                         The URL/URI or ID of a Spotify playlist to search for songs, requires client_id and client_secret
+  -it INPUTTEXTFILE [INPUTTEXTFILE ...], --inputTextfile INPUTTEXTFILE [INPUTTEXTFILE ...]
+                        The paths to textfile which contain songs to search for; will enable findAll
+  -fa, --findAll        Set to search for ALL songs matching the inputs. Otherwise the parser will try to find exactly one song per search entry
   -o OUTPUT, --output OUTPUT
                         The output directory where all songs and their text files should be saved
   -sid SPOTIFYCLIENTID, --spotifyClientId SPOTIFYCLIENTID
