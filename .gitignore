@@ -2,3 +2,5 @@ songs*
 .cache
 *.htm
 input.txt
+docker_input/*
+.DS_Store
