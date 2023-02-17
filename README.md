@@ -20,7 +20,7 @@ Required parameters:
 The scraper heavily relies on https://usdb.hehoe.de/ and http://usdb.animux.de/ to work. Might optimize this in the future.
 
 ```
-usage: USDX Song Scraper [-h] [-i INPUT [INPUT ...]] [-s SPOTIFY [SPOTIFY ...]] [-o OUTPUT] [-sid SPOTIFYCLIENTID] [-ssc SPOTIFYCLIENTSECRET] [-u USER] [-p PASSWORD]
+usage: USDX Song Scraper [-h] [-i INPUT [INPUT ...]] [-s SPOTIFY [SPOTIFY ...]] [-it INPUTTEXTFILE [INPUTTEXTFILE ...]] [-fa] [-o OUTPUT] [-sid SPOTIFYCLIENTID] [-ssc SPOTIFYCLIENTSECRET] [-u USER] [-p PASSWORD]
 
 Scrapes your music files, downloads the USDX text files and according YouTube videos
 
