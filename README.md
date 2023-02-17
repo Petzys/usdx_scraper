@@ -13,9 +13,11 @@ You can specify multiple inputs at once.
 Output defaults to `./songs/`
 
 Required parameters:
-- At least one input (Input directory or Spotify Playlist)
+- At least one input (Input directory, Spotify Playlist or Input.txt)
 - usdb.animux Credentials
 - If Spotify is used: Spotify Web API Credentials (Client ID and secret)
+
+Also available on Docker Hub: https://hub.docker.com/r/mrpetzi/usdx_scraper
 
 The scraper heavily relies on https://usdb.hehoe.de/ and http://usdb.animux.de/ to work. Might optimize this in the future.
 
