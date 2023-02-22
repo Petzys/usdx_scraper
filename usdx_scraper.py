@@ -10,6 +10,7 @@ from youtubesearchpython import VideosSearch
 from pytube import YouTube
 from difflib import SequenceMatcher
 from spotipy.oauth2 import SpotifyClientCredentials
+import shutil
 
 
 # General
@@ -212,8 +213,6 @@ def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str) 
 
         if "Login or Password invalid, please try again." in response.text:
             raise Exception("Could not authenticate");
-        else:
-            print("Login successful");
 
         # Use the websites cookies to trick the site into putting all of the IDs into one download ZIP
         session.cookies.set('counter', '1');
@@ -236,9 +235,6 @@ def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str) 
 
 # Validate all the flags in a txt file and overwrite all that are different to the parameter
 def validate_txt_tags(file_path:str, tags:dict[str, str]):
-
-    print(f"Rewriting txt file in: {file_path}")
-
     # First read all the lines and get current tags
     current_tags = {}
     with open(file_path, 'r', encoding='cp1252') as file:
@@ -256,67 +252,57 @@ def validate_txt_tags(file_path:str, tags:dict[str, str]):
         file.writelines(content)
 
 # Rename all tags in the txt files to match the files in the directory
-def clean_tags(songs_directory:str):
-    song_directory = os.listdir(songs_directory);
-
-    print("Cleaning up filenames and references...")
-
-    for song_folder in song_directory:
-        tags = {}
-        files = os.listdir(f"{songs_directory}/{song_folder}")
-        for file in files:
-            # Set the tags to set with validate_txt_tags()
-            filetype = os.path.splitext(file)[-1]
-            match filetype:
-                case ".mp3":
-                    tags["MP3"] = f"{file}\n"
-                    tags["VIDEO"] = f"{file}\n"
-                case ".jpg":
-                    tags["COVER"] = f"{file}\n"
-                case ".txt":
-                    txt = file
-        validate_txt_tags(f"{songs_directory}/{song_folder}/{txt}", tags)
+def clean_tags(songs_directory:str, song_folder:str):
+    tags = {}
+    files = os.listdir(f"{songs_directory}/{song_folder}")
+    for file in files:
+        # Set the tags to set with validate_txt_tags()
+        filetype = os.path.splitext(file)[-1]
+        match filetype:
+            case ".mp3":
+                tags["MP3"] = f"{file}\n"
+                tags["VIDEO"] = f"{file}\n"
+            case ".jpg":
+                tags["COVER"] = f"{file}\n"
+            case ".txt":
+                txt = file
+    validate_txt_tags(f"{songs_directory}/{song_folder}/{txt}", tags)
 
 # Get all YouTube URLs: Either from the entry at SONG_URL or via YouTube search
-def get_yt_url(song_list:list[list]) -> list[list]:
-    for count, song in enumerate(song_list):
-        print(f'[{(count+1):04d}/{len(song_list):04d}] Getting YouTube URL for: {song[1]}')
+def get_yt_url(song:str, id:str) -> str:
+    # Try to find if there a link to a YT video on the songs http://usdb.animux.de/ page
+    r = requests.get(SONG_URL+id)
+    if not r.ok: raise Exception("GET failed")
 
-        # Try to find if there a link to a YT video on the songs http://usdb.animux.de/ page
-        r = requests.get(SONG_URL+song[0])
-        if not r.ok: raise Exception("GET failed")
+    song_soup = BeautifulSoup(r.text, 'html5lib')
+    yt_link = song_soup.find("embed", attrs={"src": re.compile("youtube.com")})
 
-        song_soup = BeautifulSoup(r.text, 'html5lib')
-        yt_link = song_soup.find("embed", attrs={"src": re.compile("youtube.com")})
-
-        if yt_link: 
-            # Get embedded link and add to song_list
-            song.append(yt_link.get("src"));
-        else:
-            # Search for videos on YT and add links to song_list
-            search_key = re.sub(r'[^a-zA-Z0-9\s]|(%s)' % ignored_pattern, '', ignore_brackets(song[1]), re.IGNORECASE)
-            videosSearch = VideosSearch(f'{search_key} Audio', limit = 1)
-            link = videosSearch.result()["result"][0]["link"]
-            song.append(link)
-        
-    return song_list
+    if yt_link: 
+        # Get embedded link and add to song_list
+        return yt_link.get("src")
+    else:
+        # Search for videos on YT and add links to song_list
+        search_key = re.sub(r'[^a-zA-Z0-9\s]|(%s)' % ignored_pattern, '', ignore_brackets(song), re.IGNORECASE)
+        videosSearch = VideosSearch(f'{search_key} "topic"', limit = 1)
+        link = videosSearch.result()["result"][0]["link"]
+        return link
 
 # Download all the songs and rename the folders to the correct song names from song_list
-def download_song(song:str, folder:str, songs_directory:str):
+def download_song(song:str, folder:str, songs_directory:str, url:str):
 
-    yt = YouTube(song[2])
+    yt = YouTube(url)
     stream = yt.streams.filter(only_audio=False, file_extension="mp4").first()
 
     # Rename folders
-    path = f"{songs_directory}/{song[1]}"
+    path = f"{songs_directory}/{song}"
     os.rename(f"{songs_directory}/{folder}", path)
     
     for file in os.listdir(path):
         file_ending = os.path.splitext(file)[-1]
-        os.rename(f"{path}/{file}", f"{path}/{song[1]}{file_ending}")
+        os.rename(f"{path}/{file}", f"{path}/{song}{file_ending}")
 
     # Download the files, age-restricted or else will be skipped
-    out_file = stream.download(output_path=path, filename=f'{song[1]}.mp3', skip_existing=True)
+    out_file = stream.download(output_path=path, filename=f'{song}.mp3', skip_existing=True)
         
     return
 
@@ -416,26 +402,27 @@ def main():
         try:
             folder_list.append(download_usdb_txt(payload, cookie, download_url, user_args["output_path"]))
         except ConnectionError or requests.exceptions.RetryError:
-            print("Error while downloading a txt. Skipping...")
+            print(f"[{(count+1):04d}/{len(cookie_list):04d}] Error while downloading .txt files, skipping...")
             folder_list.append("")
 
-    # Get Links to YT videos
-    song_list = get_yt_url(song_list)
+    # Create Tuple List and delete entries where folder is not set
+    song_folder_tuples = [(song, folder) for song, folder in zip(song_list, folder_list) if folder]
 
     # Download songs
-    for count, (song, folder) in enumerate(zip(song_list, folder_list)):
-        if folder:
-            try: 
-                print(f'[{(count+1):04d}/{len(song_list):04d}] Downloading {song[1]}')
-                download_song(song=song, folder=folder, songs_directory=user_args["output_path"])
-            except:
-                print(f"[{(count+1):04d}/{len(song_list):04d}] Error while getting stream or downloading, skipping and deleting shallow folder...")
-                os.rmdir(folder)
-                continue
+    for count, (song, folder) in enumerate(song_folder_tuples):
+        try: 
+            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Getting YT URL for song {song[1]}')
+            url = get_yt_url(song=song[1], id=song[0])
 
+            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Downloading {song[1]}')
+            download_song(song=song[1], folder=folder, songs_directory=user_args["output_path"], url=url)
+            folder = song[1] # As it is set in download_song()
 
-    # Clean all the tags
-    clean_tags(user_args["output_path"])
+            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
+            clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
+        except:
+            print(f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading, skipping and deleting shallow folder...")
+            shutil.rmtree(f'{user_args["output_path"]}/{folder}')
 
     print("Finished")
     
