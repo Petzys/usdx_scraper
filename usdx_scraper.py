@@ -1,5 +1,6 @@
 import re
 import requests, zipfile, io
+from requests.adapters import HTTPAdapter, Retry
 import os, sys
 import argparse
 import spotipy
@@ -178,18 +179,13 @@ def search_html_database(html:str, search_list:list[SongSearchItem], find_all_ma
 
 # Create a list of cookies which contain all song IDs
 def create_cookies(song_list:list) -> list:
-    cookie_list = [""]
-    cookie_size = sys.getsizeof(cookie_list)
+    cookie_list = []
     i = 0
     for song in song_list:
+        cookie_list.append("")
         cookie_part = song[0] + "|"
         cookie_list[i] += cookie_part
-        cookie_size += sys.getsizeof(cookie_part);
-        # 4096 is maximum cookie size -> split cookie there
-        if cookie_size > 4080: 
-            cookie_size = 0
-            cookie_list.append("")
-            i += 1
+        i += 1
 
     return cookie_list
 
@@ -206,14 +202,18 @@ def create_personal_download_url(user:str) -> str:
     return f"{DOWNLOAD_URL}/{user}'s%20Playlist.zip"
 
 # Download all Textfiles for USDX from http://usdb.animux.de/
-def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str):
+def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str) -> str:
     with requests.Session() as session:
+
+        retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
+        session.mount('https://', HTTPAdapter(max_retries=retries))
+
         response = session.post(LOGIN_URL, data=payload)
 
         if "Login or Password invalid, please try again." in response.text:
             raise Exception("Could not authenticate");
         else:
-            print("Login successful");
+            # print("Login successful");
 
         # Use the websites cookies to trick the site into putting all of the IDs into one download ZIP
         session.cookies.set('counter', '1');
@@ -221,17 +221,18 @@ def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str):
 
         # An authorized request.
         r = session.get(ZIP_URL)
-        if not r.ok: raise_error("GET failed")
+        if not r.ok: raise ConnectionError
         r = session.get(ZIP_SAVE_URL)
-        if not r.ok: raise_error("GET failed")
+        if not r.ok: raise ConnectionError
         r = session.get(download_url)
-        if not r.ok: raise_error("GET failed")
+        if not r.ok: raise ConnectionError
         
         # Get ZIP and unpack
         z = zipfile.ZipFile(io.BytesIO(r.content))
+        filename = z.namelist()[0].split("/")[0]
         z.extractall(directory)
 
-    return
+    return filename
 
 # Validate all the flags in a txt file and overwrite all that are different to the parameter
 def validate_txt_tags(file_path:str, tags:dict[str, str]):
@@ -301,50 +302,23 @@ def get_yt_url(song_list:list[list]) -> list[list]:
     return song_list
 
 # Download all the songs and rename the folders to the correct song names from song_list
-def download_songs(song_list:list[list], songs_directory:str) -> list[list]:
+def download_song(song:str, folder:str, songs_directory:str):
 
-    blacklist = []
+    yt = YouTube(song[2])
+    stream = yt.streams.filter(only_audio=False, file_extension="mp4").first()
 
-    for count, song in enumerate(song_list):
+    # Rename folders
+    path = f"{songs_directory}/{song[1]}"
+    os.rename(f"{songs_directory}/{folder}", path)
+    
+    for file in os.listdir(path):
+        file_ending = os.path.splitext(file)[-1]
+        os.rename(f"{path}/{file}", f"{path}/{song[1]}{file_ending}")
 
-        song_directory = os.listdir(songs_directory);
-
-        whitelist = list(set(song_directory).difference(blacklist))
-
-        print(f'[{(count+1):04d}/{len(song_list):04d}] Downloading {song[1]}')
-
-        yt = YouTube(song[2])
-        try:
-            stream = yt.streams.filter(only_audio=False, file_extension="mp4").first()
-        except KeyError:
-            print(f"[{(count+1):04d}/{len(song_list):04d}] Error while getting stream, skipping...")
-
-        # Check the SequenceMatcher ratios to find longest matching string sequence between folder and current song name
-        match_ratios_dict = {SequenceMatcher(lambda x: x==" ", song_folder, song[1]).ratio():song_folder for song_folder in whitelist}
-        path = match_ratios_dict[max(match_ratios_dict.keys())]
-
-        blacklist.append(path)
-
-        # Rename folders
-        try:
-            os.rename(f"{songs_directory}/{path}", f"{songs_directory}/{song[1]}")
-        except FileNotFoundError:
-            print("Skipping download: FileNotFoundError")
-            continue
+    # Download the files, age-restricted or else will be skipped
+    out_file = stream.download(output_path=path, filename=f'{song[1]}.mp3', skip_existing=True)
         
-        path = f"{songs_directory}/{song[1]}"
-        for file in os.listdir(path):
-            file_ending = os.path.splitext(file)[-1]
-            os.rename(f"{path}/{file}", f"{path}/{song[1]}{file_ending}")
-
-        # Download the files, age-restricted or else will be skipped
-        try:
-            out_file = stream.download(output_path=path, filename=f'{song[1]}.mp3', skip_existing=True)
-        except KeyError:
-            print(f"[{(count+1):04d}/{len(song_list):04d}] Error while downloading file, skipping...")
-            continue
-        
-    return song_list
+    return
 
 def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     # Input
@@ -433,16 +407,32 @@ def main():
     print("Creating personal download URL...")
     download_url = create_personal_download_url(user_args["user"])
 
+    folder_list = []
+
     # Run function for each cookie in cookie_list
     for count, cookie in enumerate(cookie_list):
         print(f"[{(count+1):04d}/{len(cookie_list):04d}] Downloading .txt files")
         # Download txt files with cookie
-        download_usdb_txt(payload, cookie, download_url, user_args["output_path"])
+        try:
+            folder_list.append(download_usdb_txt(payload, cookie, download_url, user_args["output_path"]))
+        except ConnectionError or requests.exceptions.RetryError:
+            print("Error while downloading a txt. Skipping...")
+            folder_list.append("")
 
     # Get Links to YT videos
     song_list = get_yt_url(song_list)
+
     # Download songs
-    song_list = download_songs(song_list, user_args["output_path"])
+    for count, (song, folder) in enumerate(zip(song_list, folder_list)):
+        if folder:
+            try: 
+                print(f'[{(count+1):04d}/{len(song_list):04d}] Downloading {song[1]}')
+                download_song(song=song, folder=folder, songs_directory=user_args["output_path"])
+            except:
+                print(f"[{(count+1):04d}/{len(song_list):04d}] Error while getting stream or downloading, skipping and deleting shallow folder...")
+                os.rmdir(folder)
+                continue
+
 
     # Clean all the tags
     clean_tags(user_args["output_path"])
