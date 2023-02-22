@@ -213,7 +213,7 @@ def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str) 
         if "Login or Password invalid, please try again." in response.text:
             raise Exception("Could not authenticate");
         else:
-            # print("Login successful");
+            print("Login successful");
 
         # Use the websites cookies to trick the site into putting all of the IDs into one download ZIP
         session.cookies.set('counter', '1');
