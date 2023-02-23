@@ -1,17 +1,11 @@
-import re
-import requests, zipfile, io
+import requests, zipfile, io, os, sys, argparse, re, shutil
 from requests.adapters import HTTPAdapter, Retry
-import os, sys
-import argparse
 import spotipy
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 from youtubesearchpython import VideosSearch
 from pytube import YouTube
-from difflib import SequenceMatcher
 from spotipy.oauth2 import SpotifyClientCredentials
-import shutil
-
 
 # General
 LOGIN_URL = 'https://usdb.animux.de/index.php?&link=login'
@@ -40,7 +34,6 @@ class SongSearchItem:
         self.name_tag_tuple = name_tag if isinstance(name_tag, tuple) else tuple([name_tag])
 
     def __key(self):
-        print(self.artist_tag_tuple + self.name_tag_tuple)
         return self.artist_tag_tuple + self.name_tag_tuple
 
     def __hash__(self):
@@ -86,6 +79,13 @@ class SongSearchItem:
 def raise_error(err_massage:str):
     print(err_massage)
     sys.exit(1)
+
+def retry_session() -> requests.Session:
+    s = requests.Session()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
+    s.mount('https://', HTTPAdapter(max_retries=retries))
+
+    return s
 
 # Parses the SONG_SOURCE_DIRECTORY for songs with filetype from SONG_SOURCE_DIRECTORY
 def parse_songs_from_directory(directory:str, filetypes:list) -> list[SongSearchItem]:
@@ -142,7 +142,9 @@ def clean_search_list(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     return (search_list)
 
 def get_html_database(url:str, output:str):
-    response = requests.get(url)
+    session = retry_session()
+    response = session.get(url)
+
     if not response.ok: raise_error("Failed to get HTML Database")
     with open(output, "w", encoding='utf-8') as file:
         file.write(response.text)
@@ -168,7 +170,7 @@ def search_html_database(html:str, search_list:list[SongSearchItem], find_all_ma
             for count, search_item in enumerate(search_list):
                 # If all items from search_item are in title -> get this song
                 if all((item.lower() in title.lower()) for item in search_item.get_list()):
-                    print(f"{search_item} -> {title}")
+                    print(f"Found match: {search_item} -> {title}")
                     # Append only the id of the song to later download
                     song_list.append([parse_qs(urlparse(href).query)['id'][0], title]);
                     # Delete this entry of the search_list
@@ -271,7 +273,9 @@ def clean_tags(songs_directory:str, song_folder:str):
 # Get all YouTube URLs: Either from the entry at SONG_URL or via YouTube search
 def get_yt_url(song:str, id:str) -> str:
     # Try to find if there a link to a YT video on the songs http://usdb.animux.de/ page
-    r = requests.get(SONG_URL+id)
+    session = retry_session()
+
+    r = session.get(SONG_URL+id)
     if not r.ok: raise Exception("GET failed")
 
     song_soup = BeautifulSoup(r.text, 'html5lib')
@@ -397,7 +401,7 @@ def main():
 
     # Run function for each cookie in cookie_list
     for count, cookie in enumerate(cookie_list):
-        print(f"[{(count+1):04d}/{len(cookie_list):04d}] Downloading .txt files")
+        print(f"[{(count+1):04d}/{len(cookie_list):04d}] Downloading .txt files with cookie={cookie}")
         # Download txt files with cookie
         try:
             folder_list.append(download_usdb_txt(payload, cookie, download_url, user_args["output_path"]))
@@ -421,8 +425,11 @@ def main():
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
             clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
         except:
-            print(f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading, skipping and deleting shallow folder...")
-            shutil.rmtree(f'{user_args["output_path"]}/{folder}')
+            print(f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading, skipping and trying to delete shallow folder...")
+            try:
+                shutil.rmtree(f'{user_args["output_path"]}/{folder}')
+            except:
+                continue
 
     print("Finished")
     
