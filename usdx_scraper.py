@@ -80,13 +80,6 @@ def raise_error(err_massage:str):
     print(err_massage)
     sys.exit(1)
 
-def retry_session() -> requests.Session:
-    s = requests.Session()
-    retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
-    s.mount('https://', HTTPAdapter(max_retries=retries))
-
-    return s
-
 # Parses the SONG_SOURCE_DIRECTORY for songs with filetype from SONG_SOURCE_DIRECTORY
 def parse_songs_from_directory(directory:str, filetypes:list) -> list[SongSearchItem]:
     # Create list with all song names and check for correct file types
@@ -142,8 +135,7 @@ def clean_search_list(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     return (search_list)
 
 def get_html_database(url:str, output:str):
-    session = retry_session()
-    response = session.get(url)
+    response = requests.get(url)
 
     if not response.ok: raise_error("Failed to get HTML Database")
     with open(output, "w", encoding='utf-8') as file:
@@ -273,9 +265,7 @@ def clean_tags(songs_directory:str, song_folder:str):
 # Get all YouTube URLs: Either from the entry at SONG_URL or via YouTube search
 def get_yt_url(song:str, id:str) -> str:
     # Try to find if there a link to a YT video on the songs http://usdb.animux.de/ page
-    session = retry_session()
-
-    r = session.get(SONG_URL+id)
+    r = requests.get(SONG_URL+id)
     if not r.ok: raise Exception("GET failed")
 
     song_soup = BeautifulSoup(r.text, 'html5lib')
