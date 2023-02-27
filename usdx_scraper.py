@@ -269,17 +269,19 @@ def get_yt_url(song:str, id:str) -> str:
     if not r.ok: raise Exception("GET failed")
 
     song_soup = BeautifulSoup(r.text, 'html5lib')
-    yt_link = song_soup.find("embed", attrs={"src": re.compile("youtube.com")})
+    iframe = song_soup.find("iframe", src=re.compile("youtube"))
 
-    if yt_link: 
-        # Get embedded link and add to song_list
-        return yt_link.get("src")
+    if iframe:
+        # Get YT Video ID from embedded link and construct video url
+        embed_link = iframe.get("src")
+        video_id = embed_link.split("/")[-1]
+        return f"https://www.youtube.com/watch?v={video_id}"
     else:
         # Search for videos on YT and add links to song_list
-        search_key = re.sub(r'[^a-zA-Z0-9\s]|(%s)' % ignored_pattern, '', ignore_brackets(song), re.IGNORECASE)
-        videosSearch = VideosSearch(f'{search_key} "topic"', limit = 1)
-        link = videosSearch.result()["result"][0]["link"]
-        return link
+        search_key = re.sub(r"\s*\([Dd][Uu][Ee][Tt]\)\s*|\s*\[[Dd][Uu][Ee][Tt]\]\s*|\s*\{[Dd][Uu][Ee][Tt]\}\s*|\s*[Dd][Uu][Ee][Tt]\s*", "", song)
+        print(f"Searching for: {search_key} Music Video")
+        videosSearch = VideosSearch(f'{search_key} Music Video', limit = 1)
+        return videosSearch.result()["result"][0]["link"]
 
 # Download all the songs and rename the folders to the correct song names from song_list
 def download_song(song:str, folder:str, songs_directory:str, url:str):
