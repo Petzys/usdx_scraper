@@ -6,10 +6,13 @@ from urllib.parse import urlparse, parse_qs
 from youtubesearchpython import VideosSearch
 from pytube import YouTube
 from spotipy.oauth2 import SpotifyClientCredentials
+from math import ceil
+import copy
 
 # General
 LOGIN_URL = 'https://usdb.animux.de/index.php?&link=login'
 SONG_URL = 'https://usdb.animux.de/index.php?link=detail&id='
+SEARCH_URL = 'https://usdb.animux.de/?link=list'
 ZIP_URL = 'https://usdb.animux.de/index.php?&link=ziparchiv'
 ZIP_SAVE_URL = 'https://usdb.animux.de/index.php?&link=ziparchiv&save=1'
 DOWNLOAD_URL = "https://usdb.animux.de/data/downloads"
@@ -153,9 +156,8 @@ def search_html_database(html:str, search_list:list[SongSearchItem], find_all_ma
         regex_href = re.compile('usdb\.animux')
         
         # Iterate through all <a> tags with href attr.
-        for track in html_soup.find("body").find_all("a",attrs={"href" : True}):
-            # Skip if not from http://usdb.animux.de/
-            if not re.search(regex_href, str(track.get('href'))): continue
+        # Skip if not from http://usdb.animux.de/
+        for track in html_soup.find("body").find_all("a",attrs={"href" : regex_href}):
             href = track.get('href')
             title = str(track.get("title"))
 
@@ -172,6 +174,75 @@ def search_html_database(html:str, search_list:list[SongSearchItem], find_all_ma
     print(f'Found {len(song_list)} matching songs')
     return song_list
 
+def add_switched_search_items(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
+    new_list = copy.deepcopy(search_list)
+    for item in search_list:
+        print(f"Appending switched item {SongSearchItem(item.artist_tag_tuple, item.name_tag_tuple)}")
+        new_list.append(SongSearchItem(item.artist_tag_tuple, item.name_tag_tuple))
+
+    return new_list
+
+def native_search(login_payload:dict, search_list:list[SongSearchItem], find_all_matching:bool) -> list[list]:
+    search_list = add_switched_search_items(search_list=search_list)
+
+    song_list = [];
+
+    with requests.Session() as session:
+
+        #retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
+        #session.mount('https://', HTTPAdapter(max_retries=retries))
+
+        response = session.post(LOGIN_URL, data=login_payload)
+
+        if "Login or Password invalid, please try again." in response.text:
+            raise Exception("Could not authenticate");
+
+        for count, search_item in enumerate(search_list):
+            artist_string = " ".join(search_item.artist_tag_tuple)
+            title_string = " ".join(search_item.name_tag_tuple)
+            payload = create_search_payload(interpret=artist_string, title=title_string)
+
+            response = session.post(SEARCH_URL, data=payload)
+
+            if "There are  0  results on  0 page(s)" in response.text:
+                continue
+
+            search_soup = BeautifulSoup(response.text, 'html5lib')
+
+            # Check for next pages
+            string_regex = re.compile(r'There\s*are\s*\d{0,9999}\s*results\s*on\s*\d{0,9999}\s*page')
+            counter_string = search_soup.find(string=string_regex)
+            print(f"Found counter String: {counter_string}")
+            counter = int(re.search(r'\d+', counter_string).group(0))
+            print(f"Found counter: {counter}")
+            no_of_pages = ceil(counter/100)
+            print(f"No of Pages: {no_of_pages}")
+
+            for i in range(no_of_pages):
+                if i != 0:
+                    print(f"Changing pages to : {i*100}")
+                    payload = create_search_payload(interpret=artist_string, title=title_string, start=i*100)
+                    response = session.post(SEARCH_URL, data=payload)
+
+                search_soup = BeautifulSoup(response.text, 'html5lib')
+
+                result_regex = re.compile(r'list_tr1|list_tr2')
+                href_regex = re.compile(r'\?link=detail&id=')
+                result_tags = search_soup.findAll("tr", attrs={"class":result_regex, "onmouseover":"this.className='list_hover'"})
+
+                for tag in result_tags:
+                    a_tag = tag.find("a", recursive=True, href=href_regex)
+                    id = parse_qs(urlparse(a_tag.get("href")).query)['id'][0]
+                    title = a_tag.contents[0]
+                    artist = tag.find("td").contents[0]
+
+                    print(f"Found match: {search_item} -> {artist} - {title}")
+                    song_list.append([id, f"{artist} - {title}"])
+
+            if not find_all_matching: search_list.pop(count)
+
+    return song_list
+
 # Create a list of cookies which contain all song IDs
 def create_cookies(song_list:list) -> list:
     cookie_list = []
@@ -185,7 +256,22 @@ def create_cookies(song_list:list) -> list:
     return cookie_list
 
 # Create the payload to login on http://usdb.animux.de/ with the user data
-def create_payload(user:str, password:str) -> str:
+def create_search_payload(interpret:str="", title:str="", edition:str="", language:str="", genre:str="", user:str="", order:str="", ud:str="", limit:int=100, start:int=0,) -> str:
+    return {
+        'interpret':interpret,
+        'title':title,
+        'edition':edition,
+        'language':language,
+        'genre':genre,
+        'user':user,
+        'order':order,
+        'ud':ud,
+        'limit':limit, 
+        'start':start
+    }
+
+# Create the payload to login on http://usdb.animux.de/ with the user data
+def create_login_payload(user:str, password:str) -> str:
     return {
         'user': user,
         'pass': password,
@@ -405,7 +491,10 @@ def main():
 
     # Check the HTML for matches
     print("Filtering Database for search results...")
-    song_list = search_html_database(DATABASE_HTML, search_list, find_all_matching=user_args["findAll"])
+    #song_list = search_html_database(DATABASE_HTML, search_list, find_all_matching=user_args["findAll"])
+    print("Creating payload...")
+    payload = create_login_payload(user_args["user"], user_args["password"])
+    song_list = native_search(login_payload=payload, search_list=search_list, find_all_matching=user_args["findAll"])
     
     # Remove songs which are already in the output directory
     song_list = remove_duplicates(directory=user_args["output_path"],song_list=song_list)
@@ -415,7 +504,7 @@ def main():
     cookie_list = create_cookies(song_list)
     # Create the payload with user data
     print("Creating payload...")
-    payload = create_payload(user_args["user"], user_args["password"])
+    payload = create_login_payload(user_args["user"], user_args["password"])
     # Create users download URL
     print("Creating personal download URL...")
     download_url = create_personal_download_url(user_args["user"])
