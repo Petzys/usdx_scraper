@@ -299,7 +299,7 @@ def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
     desired_path = os.path.join(songs_directory, song)
 
     if os.path.isdir(desired_path):
-        print(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
+        #print(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
         desired_path = os.path.join(songs_directory, folder)
         song = folder
     elif os.path.isdir(os.path.join(songs_directory, folder)):
@@ -320,6 +320,11 @@ def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
     out_file = stream.download(output_path=desired_path, filename=f'{song}.mp3', skip_existing=True)
         
     return song
+
+def remove_duplicates(directory:str, song_list:str) -> list[list]:
+    if not os.path.isdir(directory): return song_list
+    files_in_directory = os.listdir(directory)
+    return [song for song in song_list if song[1] not in files_in_directory]
 
 def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     # Input
@@ -401,6 +406,10 @@ def main():
     # Check the HTML for matches
     print("Filtering Database for search results...")
     song_list = search_html_database(DATABASE_HTML, search_list, find_all_matching=user_args["findAll"])
+    
+    # Remove songs which are already in the output directory
+    song_list = remove_duplicates(directory=user_args["output_path"],song_list=song_list)
+
     # Create cookies based on that
     print("Creating cookies...")
     cookie_list = create_cookies(song_list)
@@ -425,7 +434,7 @@ def main():
                 print(f"[{(count+1):04d}/{len(cookie_list):04d}] This song already exists, skipping...")
                 folder_list.append(None)
         except ConnectionError or requests.exceptions.RetryError:
-            print(f"[{(count+1):04d}/{len(cookie_list):04d}] Error while downloading .txt files, skipping...")
+            print(f"[{(count+1):04d}/{len(cookie_list):04d}] Error while downloading .txt files, skipping {cookie[:-1]}...")
             folder_list.append(None)
 
     # Create Tuple List and delete entries where folder is not set
@@ -442,8 +451,9 @@ def main():
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
             clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
-        except:
+        except Exception as e:
             print(f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading, skipping and trying to delete shallow folder...")
+            print(f"Detailed Error: {str(e)}")
             if os.path.isdir(os.path.join(user_args["output_path"], folder)):
                 shutil.rmtree(os.path.join(user_args["output_path"], folder))
 
