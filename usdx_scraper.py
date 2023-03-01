@@ -222,7 +222,7 @@ def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str) 
         
         # Get ZIP and unpack
         z = zipfile.ZipFile(io.BytesIO(r.content))
-        filename = z.namelist()[0].split("/")[0]
+        filename, _ = os.path.split(z.namelist()[0])
         z.extractall(directory)
 
     return filename
@@ -248,7 +248,7 @@ def validate_txt_tags(file_path:str, tags:dict[str, str]):
 # Rename all tags in the txt files to match the files in the directory
 def clean_tags(songs_directory:str, song_folder:str):
     tags = {}
-    files = os.listdir(f"{songs_directory}/{song_folder}")
+    files = os.listdir(os.path.join(songs_directory, song_folder))
     for file in files:
         # Set the tags to set with validate_txt_tags()
         filetype = os.path.splitext(file)[-1]
@@ -260,7 +260,7 @@ def clean_tags(songs_directory:str, song_folder:str):
                 tags["COVER"] = f"{file}\n"
             case ".txt":
                 txt = file
-    validate_txt_tags(f"{songs_directory}/{song_folder}/{txt}", tags)
+    validate_txt_tags(os.path.join(songs_directory, song_folder, txt), tags)
 
 # Get all YouTube URLs: Either from the entry at SONG_URL or via YouTube search
 def get_yt_url(song:str, id:str) -> str:
@@ -269,13 +269,19 @@ def get_yt_url(song:str, id:str) -> str:
     if not r.ok: raise Exception("GET failed")
 
     song_soup = BeautifulSoup(r.text, 'html5lib')
-    iframe = song_soup.find("iframe", src=re.compile("youtube"))
+
+    yt_pattern = re.compile(r'youtu')
+    a_tag = song_soup.find("a", href=yt_pattern)
+    iframe = song_soup.find("iframe", src=yt_pattern)
 
     if iframe:
         # Get YT Video ID from embedded link and construct video url
         embed_link = iframe.get("src")
         video_id = embed_link.split("/")[-1]
         return f"https://www.youtube.com/watch?v={video_id}"
+    elif a_tag: 
+        # If a_tag to vt video is set, use this
+        return a_tag.get("href")
     else:
         # Search for videos on YT and add links to song_list
         search_key = re.sub(r"\s*\([Dd][Uu][Ee][Tt]\)\s*|\s*\[[Dd][Uu][Ee][Tt]\]\s*|\s*\{[Dd][Uu][Ee][Tt]\}\s*|\s*[Dd][Uu][Ee][Tt]\s*", "", song)
@@ -284,23 +290,36 @@ def get_yt_url(song:str, id:str) -> str:
         return videosSearch.result()["result"][0]["link"]
 
 # Download all the songs and rename the folders to the correct song names from song_list
-def download_song(song:str, folder:str, songs_directory:str, url:str):
+def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
 
     yt = YouTube(url)
     stream = yt.streams.filter(only_audio=False, file_extension="mp4").first()
 
     # Rename folders
-    path = f"{songs_directory}/{song}"
-    os.rename(f"{songs_directory}/{folder}", path)
+    desired_path = os.path.join(songs_directory, song)
+
+    if os.path.isdir(desired_path):
+        print(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
+        desired_path = os.path.join(songs_directory, folder)
+        song = folder
+    elif os.path.isdir(os.path.join(songs_directory, folder)):
+        os.rename(os.path.join(songs_directory, folder), desired_path)
+    else: 
+        print(f"Could not find directory {os.path.join(songs_directory, folder)}")
+        raise FileNotFoundError
     
-    for file in os.listdir(path):
+    for file in os.listdir(desired_path):
         file_ending = os.path.splitext(file)[-1]
-        os.rename(f"{path}/{file}", f"{path}/{song}{file_ending}")
+        if os.path.isfile(os.path.join(desired_path, file)):
+            os.rename(os.path.join(desired_path, file), os.path.join(desired_path, f"{song}{file_ending}")) 
+        else:
+            print(f"Could not find file {os.path.join(desired_path, file)}")
+            raise FileNotFoundError
 
     # Download the files, age-restricted or else will be skipped
-    out_file = stream.download(output_path=path, filename=f'{song}.mp3', skip_existing=True)
+    out_file = stream.download(output_path=desired_path, filename=f'{song}.mp3', skip_existing=True)
         
-    return
+    return song
 
 def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     # Input
@@ -345,6 +364,9 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     if not any(input_ways): raise_error("At least one input is required. Exiting...")
     if not (user_args["user"] and user_args["password"]): raise_error("Username and password required. Exiting...")
     if (user_args["spotify_input"] and not (user_args["spotify_id"] and user_args["spotify_secret"])): raise_error("Client ID and secret are required if a Spotify playlist is specified")
+
+    if user_args["input_path"] and not all([os.path.isdir(dir)] for dir in user_args["input_path"]): raise_error(f'{user_args["input_path"]} is not a valid directory. Exiting...')
+    if user_args["inputTextfile"] and not all([os.path.isfile(file)] for file in user_args["inputTextfile"]): raise_error(f'{user_args["inputTextfile"]} is not a valid file. Exiting...')
 
     return user_args
 
@@ -393,13 +415,18 @@ def main():
 
     # Run function for each cookie in cookie_list
     for count, cookie in enumerate(cookie_list):
-        print(f"[{(count+1):04d}/{len(cookie_list):04d}] Downloading .txt files with cookie={cookie}")
+        print(f"[{(count+1):04d}/{len(cookie_list):04d}] Downloading .txt files with cookie = {cookie[:-1]}")
         # Download txt files with cookie
         try:
-            folder_list.append(download_usdb_txt(payload, cookie, download_url, user_args["output_path"]))
+            folder = download_usdb_txt(payload, cookie, download_url, user_args["output_path"])
+            if not folder in folder_list:
+                folder_list.append(folder)
+            else:
+                print(f"[{(count+1):04d}/{len(cookie_list):04d}] This song already exists, skipping...")
+                folder_list.append(None)
         except ConnectionError or requests.exceptions.RetryError:
             print(f"[{(count+1):04d}/{len(cookie_list):04d}] Error while downloading .txt files, skipping...")
-            folder_list.append("")
+            folder_list.append(None)
 
     # Create Tuple List and delete entries where folder is not set
     song_folder_tuples = [(song, folder) for song, folder in zip(song_list, folder_list) if folder]
@@ -411,17 +438,14 @@ def main():
             url = get_yt_url(song=song[1], id=song[0])
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Downloading {song[1]}')
-            download_song(song=song[1], folder=folder, songs_directory=user_args["output_path"], url=url)
-            folder = song[1] # As it is set in download_song()
+            folder = download_song(song=song[1], folder=folder, songs_directory=user_args["output_path"], url=url)
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
             clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
         except:
             print(f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading, skipping and trying to delete shallow folder...")
-            try:
-                shutil.rmtree(f'{user_args["output_path"]}/{folder}')
-            except:
-                continue
+            if os.path.isdir(os.path.join(user_args["output_path"], folder)):
+                shutil.rmtree(os.path.join(user_args["output_path"], folder))
 
     print("Finished")
     
