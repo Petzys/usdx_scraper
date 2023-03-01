@@ -137,47 +137,10 @@ def clean_search_list(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     print(f"Successfully stripped search list")
     return (search_list)
 
-def get_html_database(url:str, output:str):
-    response = requests.get(url)
-
-    if not response.ok: raise_error("Failed to get HTML Database")
-    with open(output, "w", encoding='utf-8') as file:
-        file.write(response.text)
-
-    return
-
-# Iterate through all links to songs in the HTML database and check for search_list items
-def search_html_database(html:str, search_list:list[SongSearchItem], find_all_matching:bool) -> list[list]:
-    song_list = [];
-
-    with open(html, 'r', encoding='utf-8') as input:
-        html_soup = BeautifulSoup(input, 'html5lib')
-        # Only look for URLs redirecting to http://usdb.animux.de/
-        regex_href = re.compile('usdb\.animux')
-        
-        # Iterate through all <a> tags with href attr.
-        # Skip if not from http://usdb.animux.de/
-        for track in html_soup.find("body").find_all("a",attrs={"href" : regex_href}):
-            href = track.get('href')
-            title = str(track.get("title"))
-
-            for count, search_item in enumerate(search_list):
-                # If all items from search_item are in title -> get this song
-                if all((item.lower() in title.lower()) for item in search_item.get_list()):
-                    print(f"Found match: {search_item} -> {title}")
-                    # Append only the id of the song to later download
-                    song_list.append([parse_qs(urlparse(href).query)['id'][0], title]);
-                    # Delete this entry of the search_list
-                    if not find_all_matching: search_list.pop(count)
-                    break;
-    
-    print(f'Found {len(song_list)} matching songs')
-    return song_list
-
 def add_switched_search_items(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     new_list = copy.deepcopy(search_list)
     for item in search_list:
-        print(f"Appending switched item {SongSearchItem(item.artist_tag_tuple, item.name_tag_tuple)}")
+        #print(f"Appending switched item {SongSearchItem(item.artist_tag_tuple, item.name_tag_tuple)}")
         new_list.append(SongSearchItem(item.artist_tag_tuple, item.name_tag_tuple))
 
     return new_list
@@ -189,8 +152,8 @@ def native_search(login_payload:dict, search_list:list[SongSearchItem], find_all
 
     with requests.Session() as session:
 
-        #retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
-        #session.mount('https://', HTTPAdapter(max_retries=retries))
+        retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
+        session.mount('https://', HTTPAdapter(max_retries=retries))
 
         response = session.post(LOGIN_URL, data=login_payload)
 
@@ -212,15 +175,17 @@ def native_search(login_payload:dict, search_list:list[SongSearchItem], find_all
             # Check for next pages
             string_regex = re.compile(r'There\s*are\s*\d{0,9999}\s*results\s*on\s*\d{0,9999}\s*page')
             counter_string = search_soup.find(string=string_regex)
-            print(f"Found counter String: {counter_string}")
+            #print(f"Found counter String: {counter_string}")
+            
             counter = int(re.search(r'\d+', counter_string).group(0))
-            print(f"Found counter: {counter}")
+            #print(f"Found counter: {counter}")
+            
             no_of_pages = ceil(counter/100)
-            print(f"No of Pages: {no_of_pages}")
+            #print(f"No of Pages: {no_of_pages}")
 
             for i in range(no_of_pages):
                 if i != 0:
-                    print(f"Changing pages to : {i*100}")
+                    #print(f"Changing pages to : {i*100}")
                     payload = create_search_payload(interpret=artist_string, title=title_string, start=i*100)
                     response = session.post(SEARCH_URL, data=payload)
 
@@ -465,7 +430,6 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 
 # Main function
 def main():
-
     parser = argparse.ArgumentParser(prog="USDX Song Scraper", description="Scrapes your music files, downloads the USDX text files and according YouTube videos")
 
     user_args = parse_cli_input(parser)
@@ -484,16 +448,13 @@ def main():
 
     search_list = list(set(search_list))
 
-    # Download HTML Database if necessary
-    if not os.path.exists(DATABASE_HTML):
-        print("Downloading Database HTML...")
-        get_html_database(DATABASE_URL, DATABASE_HTML)
-
-    # Check the HTML for matches
-    print("Filtering Database for search results...")
-    #song_list = search_html_database(DATABASE_HTML, search_list, find_all_matching=user_args["findAll"])
+    # Check the USDB for matches
+    print("Searching for matches...")
+    
+    # Create the payload with user data
     print("Creating payload...")
     payload = create_login_payload(user_args["user"], user_args["password"])
+
     song_list = native_search(login_payload=payload, search_list=search_list, find_all_matching=user_args["findAll"])
     
     # Remove songs which are already in the output directory
@@ -502,9 +463,7 @@ def main():
     # Create cookies based on that
     print("Creating cookies...")
     cookie_list = create_cookies(song_list)
-    # Create the payload with user data
-    print("Creating payload...")
-    payload = create_login_payload(user_args["user"], user_args["password"])
+
     # Create users download URL
     print("Creating personal download URL...")
     download_url = create_personal_download_url(user_args["user"])
@@ -552,3 +511,4 @@ def main():
 
 if __name__ == "__main__":
     main();
+    sys.exit(0)
