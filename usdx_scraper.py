@@ -349,11 +349,11 @@ def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
     # Rename folders
     desired_path = os.path.join(songs_directory, song)
 
-    if os.path.isdir(desired_path):
+    if song in os.listdir(songs_directory):
         #print(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
         desired_path = os.path.join(songs_directory, folder)
         song = folder
-    elif os.path.isdir(os.path.join(songs_directory, folder)):
+    elif folder in os.listdir(songs_directory):
         os.rename(os.path.join(songs_directory, folder), desired_path)
     else: 
         print(f"Could not find directory {os.path.join(songs_directory, folder)}")
@@ -502,7 +502,7 @@ def main():
         except Exception as e:
             print(f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading, skipping and trying to delete shallow folder...")
             print(f"Detailed Error: {str(e)}")
-            if os.path.isdir(os.path.join(user_args["output_path"], folder)):
+            if folder in os.listdir(user_args["output_path"]):
                 shutil.rmtree(os.path.join(user_args["output_path"], folder))
 
     print("Finished")
