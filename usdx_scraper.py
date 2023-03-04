@@ -17,10 +17,6 @@ ZIP_URL = 'https://usdb.animux.de/index.php?&link=ziparchiv'
 ZIP_SAVE_URL = 'https://usdb.animux.de/index.php?&link=ziparchiv&save=1'
 DOWNLOAD_URL = "https://usdb.animux.de/data/downloads"
 
-# Path to the HTML File containing all database links
-DATABASE_URL = "https://usdb.hehoe.de/"
-DATABASE_HTML = "Index of all UltraStar songs available in databases.htm"
-
 # File Types so search for in the SONG_SOURCE_DIRECTORY
 SONG_FILE_TYPES = [".mp3", ".wav", ".m4a"]
 
@@ -315,9 +311,13 @@ def clean_tags(songs_directory:str, song_folder:str):
 
 # Get all YouTube URLs: Either from the entry at SONG_URL or via YouTube search
 def get_yt_url(song:str, id:str) -> str:
-    # Try to find if there a link to a YT video on the songs http://usdb.animux.de/ page
-    r = requests.get(SONG_URL+id)
-    if not r.ok: raise Exception("GET failed")
+    with requests.Session() as session:
+        retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
+        session.mount('https://', HTTPAdapter(max_retries=retries))
+
+        # Try to find if there a link to a YT video on the songs http://usdb.animux.de/ page
+        r = session.get(SONG_URL+id)
+        if not r.ok: raise Exception("GET failed")
 
     song_soup = BeautifulSoup(r.text, 'html5lib')
 

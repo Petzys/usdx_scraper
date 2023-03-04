@@ -4,3 +4,6 @@ songs*
 input.txt
 docker_input/*
 .DS_Store
+*.jpg
+*.mp3
+*.txt
