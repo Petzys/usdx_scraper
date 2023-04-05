@@ -466,7 +466,7 @@ def thread_runner_download(song_folder_tuples:tuple, user_args:dict):
             status_print(iterator=song_folder_tuples, count=count, content=f'Cleaning up filenames and references in {folder}')
             clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
         except Exception as e:
-            status_print(iterator=song_folder_tuples, count=count, content=f'Error while getting stream or downloading, skipping and memorizing shallow folder...')
+            status_print(iterator=song_folder_tuples, count=count, content=f'Error while getting stream or downloading, skipping and deleting shallow folder...')
             #print(f"Detailed Error: {str(e)}")
             if folder in os.listdir(user_args["output_path"]):
                 shutil.rmtree(os.path.join(user_args["output_path"], folder))
