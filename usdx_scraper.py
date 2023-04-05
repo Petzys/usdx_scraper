@@ -1,3 +1,4 @@
+import threading
 import requests, zipfile, io, os, sys, argparse, re, shutil
 from requests.adapters import HTTPAdapter, Retry
 import spotipy
@@ -8,6 +9,8 @@ from pytube import YouTube
 from spotipy.oauth2 import SpotifyClientCredentials
 from math import ceil
 import copy
+
+THREAD_NUMBER = 16
 
 # General
 LOGIN_URL = 'https://usdb.animux.de/index.php?&link=login'
@@ -428,6 +431,55 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 
     # TODO: create user if needed
 
+def thread_runner_txt(cookie_list:list, payload:str, download_url:str, user_args:dict, index:int, target:list):
+    folder_list = []
+
+    # Run function for each cookie in cookie_list
+    for count, cookie in enumerate(cookie_list):
+        status_print(iterator=cookie_list, count=count, content=f'Downloading .txt files with cookie = {cookie[:-1]}')
+        # Download txt files with cookie
+        try:
+            folder = download_usdb_txt(payload, cookie, download_url, user_args["output_path"])
+            if not folder in folder_list:
+                folder_list.append(folder)
+            else:
+                status_print(iterator=cookie_list, count=count, content=f'This song already exists, skipping...')
+                folder_list.append(None)
+        except ConnectionError or requests.exceptions.RetryError:
+            status_print(iterator=cookie_list, count=count, content=f'Error while downloading .txt files, skipping {cookie[:-1]}...')
+            folder_list.append(None)
+
+    target[index] = folder_list
+
+    return
+
+def thread_runner_download(song_folder_tuples:tuple, user_args:dict): 
+    # Download songs
+    for count, (song, folder) in enumerate(song_folder_tuples):
+        try: 
+            status_print(iterator=song_folder_tuples, count=count, content=f'Getting YT URL for song {song[1]}')
+            url = get_yt_url(song=song[1], id=song[0])
+
+            status_print(iterator=song_folder_tuples, count=count, content=f'Downloading {song[1]}')
+            folder = download_song(song=song[1], folder=folder, songs_directory=user_args["output_path"], url=url)
+
+            status_print(iterator=song_folder_tuples, count=count, content=f'Cleaning up filenames and references in {folder}')
+            clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
+        except Exception as e:
+            status_print(iterator=song_folder_tuples, count=count, content=f'Error while getting stream or downloading, skipping and memorizing shallow folder...')
+            #print(f"Detailed Error: {str(e)}")
+            if folder in os.listdir(user_args["output_path"]):
+                shutil.rmtree(os.path.join(user_args["output_path"], folder))
+            
+    return
+
+def split(list, number_spliced_lists) -> list:
+    k, m = divmod(len(list), number_spliced_lists)
+    return [list[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(number_spliced_lists)]
+
+def status_print(iterator, count:int, content:str):
+    print(f'[{threading.current_thread().name}]:[{(count+1):04d}/{len(iterator):04d}] {content}')
+
 # Main function
 def main():
     parser = argparse.ArgumentParser(prog="USDX Song Scraper", description="Scrapes your music files, downloads the USDX text files and according YouTube videos")
@@ -468,42 +520,51 @@ def main():
     print("Creating personal download URL...")
     download_url = create_personal_download_url(user_args["user"])
 
-    folder_list = []
+    # Thread folder names
+    thread_folders = []
+    for i in range(THREAD_NUMBER):
+        thread_folders.append(f"t_{i}")
 
-    # Run function for each cookie in cookie_list
-    for count, cookie in enumerate(cookie_list):
-        print(f"[{(count+1):04d}/{len(cookie_list):04d}] Downloading .txt files with cookie = {cookie[:-1]}")
-        # Download txt files with cookie
-        try:
-            folder = download_usdb_txt(payload, cookie, download_url, user_args["output_path"])
-            if not folder in folder_list:
-                folder_list.append(folder)
-            else:
-                print(f"[{(count+1):04d}/{len(cookie_list):04d}] This song already exists, skipping...")
-                folder_list.append(None)
-        except ConnectionError or requests.exceptions.RetryError:
-            print(f"[{(count+1):04d}/{len(cookie_list):04d}] Error while downloading .txt files, skipping {cookie[:-1]}...")
-            folder_list.append(None)
+    sliced_cookie_tuple = split(list=cookie_list, number_spliced_lists=THREAD_NUMBER)
+    threads = [None] * THREAD_NUMBER
+    target = [None] * THREAD_NUMBER
+    for i in range(THREAD_NUMBER):
+        cloned_user_args = copy.deepcopy(user_args)
+        cloned_user_args["output_path"] = os.path.join(cloned_user_args["output_path"], thread_folders[i])
+        args = (sliced_cookie_tuple[i], payload, download_url, cloned_user_args, i, target)
+        threads[i] = threading.Thread(target=thread_runner_txt, args=args, name=f"THREAD_TXT_{i}")
+        threads[i].start()
+
+    for i in range(THREAD_NUMBER):
+        threads[i].join()
+
+    folder_list = [item for sublist in target for item in sublist]
 
     # Create Tuple List and delete entries where folder is not set
     song_folder_tuples = [(song, folder) for song, folder in zip(song_list, folder_list) if folder]
 
     # Download songs
-    for count, (song, folder) in enumerate(song_folder_tuples):
-        try: 
-            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Getting YT URL for song {song[1]}')
-            url = get_yt_url(song=song[1], id=song[0])
+    sliced_song_folder_tuples = split(list=song_folder_tuples, number_spliced_lists=THREAD_NUMBER)
+    for i in range(THREAD_NUMBER):
+        cloned_user_args = copy.deepcopy(user_args)
+        cloned_user_args["output_path"] = os.path.join(cloned_user_args["output_path"], thread_folders[i])
+        args = (sliced_song_folder_tuples[i], cloned_user_args)
+        threads[i] = threading.Thread(target=thread_runner_download, args=args, name=f"THREAD_DOWNLOAD_{i}")
+        threads[i].start()
 
-            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Downloading {song[1]}')
-            folder = download_song(song=song[1], folder=folder, songs_directory=user_args["output_path"], url=url)
+    for i in range(THREAD_NUMBER):
+        threads[i].join()
 
-            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
-            clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
-        except Exception as e:
-            print(f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading, skipping and trying to delete shallow folder...")
-            print(f"Detailed Error: {str(e)}")
-            if folder in os.listdir(user_args["output_path"]):
-                shutil.rmtree(os.path.join(user_args["output_path"], folder))
+    # Moving files from thread folders
+    for folder in thread_folders:
+        full_thread_folder_path = os.path.join(user_args["output_path"], folder)
+        if os.path.isdir(full_thread_folder_path):
+            for song in os.listdir(full_thread_folder_path):
+                full_song_path = os.path.join(full_thread_folder_path, song)
+                target_path = os.path.join(user_args["output_path"], song)
+                if os.path.isdir(full_song_path) and not os.path.exists(target_path):
+                    shutil.move(full_song_path, target_path)
+        shutil.rmtree(full_thread_folder_path)
 
     print("Finished")
     
