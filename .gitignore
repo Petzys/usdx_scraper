@@ -7,3 +7,4 @@ docker_input/*
 *.jpg
 *.mp3
 *.txt
+modules/__pycache__
