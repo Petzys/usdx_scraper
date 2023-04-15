@@ -3,7 +3,6 @@ import re
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from modules import config
-
 class SongSearchItem:
     def __init__(self, name_tag, artist_tag=tuple()):
         self.artist_tag_tuple = artist_tag if isinstance(artist_tag, tuple) else tuple([artist_tag])
@@ -52,6 +51,8 @@ class SongSearchItem:
     def get_list(self) -> list:
         return list(self.name_tag_tuple)+list(self.artist_tag_tuple)
     
+##### Directory Parsing #####
+
 # Parses the SONG_SOURCE_DIRECTORY for songs with filetype from SONG_SOURCE_DIRECTORY
 def parse_songs_from_directory(directory:str, filetypes:list) -> list[SongSearchItem]:
     # Create list with all song names and check for correct file types
@@ -61,29 +62,6 @@ def parse_songs_from_directory(directory:str, filetypes:list) -> list[SongSearch
     parsed_objects = [SongSearchItem(name_tag=song) for song in parsed_songs]
     
     print(f"Successfully parsed all songs from {directory}")
-
-    return parsed_objects
-
-def parse_songs_from_spotify(client_id:str, client_secret:str, playlist_identifier:str) -> list[SongSearchItem]:
-    spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
-
-    playlist = spotify.playlist_items(playlist_id=playlist_identifier, fields="items(track(name,artists(name)))")
-    search_list = []
-    for track in playlist["items"]:
-        track = track["track"]
-        artist_set = tuple([artist["name"] for artist in track["artists"]])
-        name_set = tuple([track["name"]])
-        item = SongSearchItem(name_set, artist_set)
-        search_list.append(item)
-
-    print(f"Successfully got parsed playlist from Spotify: {playlist_identifier}")
-    return search_list
-
-def parse_songs_from_textfile(path:str) -> list[SongSearchItem]:
-    with open(file=path, mode="r") as f:
-        entries = f.read().splitlines()
-
-    parsed_objects = [SongSearchItem(name_tag=song) for song in entries]
 
     return parsed_objects
 
@@ -105,3 +83,31 @@ def clean_search_list(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     search_list = [item for item in search_list if len(item)>1]
     print(f"Successfully stripped search list")
     return (search_list)
+
+##### Spotify Parsing #####
+
+def parse_songs_from_spotify(client_id:str, client_secret:str, playlist_identifier:str) -> list[SongSearchItem]:
+    spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
+
+    playlist = spotify.playlist_items(playlist_id=playlist_identifier, fields="items(track(name,artists(name)))")
+    search_list = []
+    for track in playlist["items"]:
+        track = track["track"]
+        artist_set = tuple([artist["name"] for artist in track["artists"]])
+        name_set = tuple([track["name"]])
+        item = SongSearchItem(name_set, artist_set)
+        search_list.append(item)
+
+    print(f"Successfully got parsed playlist from Spotify: {playlist_identifier}")
+    return search_list
+
+##### Textfile Parsing #####
+
+def parse_songs_from_textfile(path:str) -> list[SongSearchItem]:
+    with open(file=path, mode="r") as f:
+        entries = f.read().splitlines()
+
+    parsed_objects = [SongSearchItem(name_tag=song) for song in entries]
+
+    return parsed_objects
+

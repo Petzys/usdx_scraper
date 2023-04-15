@@ -1,8 +1,11 @@
 import argparse
-import os
 import sys
 import threading
+import os
 
+from modules import config
+
+##########################################
 # Output
 
 def raise_error(err_massage:str):
@@ -57,8 +60,10 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     user_args["password"] = args.password
 
     if not any(input_ways): raise_error("At least one input is required. Exiting...")
-    if not (user_args["user"] and user_args["password"]): raise_error("Username and password required. Exiting...")
-    if (user_args["spotify_input"] and not (user_args["spotify_id"] and user_args["spotify_secret"])): raise_error("Client ID and secret are required if a Spotify playlist is specified")
+    if not ((user_args["user"] and user_args["password"]) or (config.USDB_USERNAME and config.USDB_PASSWORD)): 
+        raise_error("Username and password required. Exiting...")
+    if user_args["spotify_input"] and not ((user_args["spotify_id"] and user_args["spotify_secret"]) or (config.SPOTIFY_ID and config.SPOTIFY_SECRET)):
+        raise_error("Client ID and secret are required if a Spotify playlist is specified")
 
     if user_args["input_path"] and not all([os.path.isdir(dir)] for dir in user_args["input_path"]): raise_error(f'{user_args["input_path"]} is not a valid directory. Exiting...')
     if user_args["inputTextfile"] and not all([os.path.isfile(file)] for file in user_args["inputTextfile"]): raise_error(f'{user_args["inputTextfile"]} is not a valid file. Exiting...')

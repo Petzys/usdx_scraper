@@ -11,8 +11,7 @@ from requests.adapters import HTTPAdapter, Retry
 
 from modules import config, song_parser
 
-#################################
-# Login
+##### Login #####
 # Create the payload to login on http://usdb.animux.de/ with the user data
 def create_login_payload(user:str, password:str) -> str:
     return {
@@ -21,9 +20,7 @@ def create_login_payload(user:str, password:str) -> str:
         'login': 'Login'
     }
 
-
-#################################
-# Search
+##### Search #####
 # Create the payload to login on http://usdb.animux.de/ with the user data
 def create_search_payload(interpret:str="", title:str="", edition:str="", language:str="", genre:str="", user:str="", order:str="", ud:str="", limit:int=100, start:int=0,) -> str:
     return {
@@ -111,8 +108,7 @@ def native_search(login_payload:dict, search_list:list[song_parser.SongSearchIte
     return song_list
 
 
-#################################
-# TXT Download
+##### TXT Download #####
 # Create personal download URL for http://usdb.animux.de/
 def create_personal_download_url(user:str) -> str:
     return f"{config.DOWNLOAD_URL}/{user}'s%20Playlist.zip"

@@ -18,7 +18,6 @@ def validate_txt_tags(file_path:str, tags:dict[str, str]):
         file.writelines([f"#{key}:{value}" for key,value in new_tags.items()])
         file.writelines(content)
 
-
 # Rename all tags in the txt files to match the files in the directory
 def clean_tags(songs_directory:str, song_folder:str):
     tags = {}

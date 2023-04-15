@@ -8,11 +8,15 @@ CONFIG_FILE_PATH = "config.yaml"
 
 # Main function
 def main():
-    config.load_config(CONFIG_FILE_PATH)
+    config_dict = config.load_config(config_file_path=CONFIG_FILE_PATH)
+    config.global_config(config=config_dict)
 
     user_parser = argparse.ArgumentParser(prog="USDX Song Scraper", description="Scrapes your music files, downloads the USDX text files and according YouTube videos")
 
-    user_args = cli_handler.parse_cli_input(user_parser)
+    user_args = cli_handler.parse_cli_input(parser=user_parser)
+
+    config_dict = config.update_config(config_file_path=CONFIG_FILE_PATH, config=config_dict, user_args=user_args)
+    config.global_config(config=config_dict)
 
     search_list = []
 
@@ -21,7 +25,7 @@ def main():
         search_list += song_parser.clean_search_list(song_parser.parse_songs_from_directory(directory=source_directory, filetypes=config.SONG_FILE_TYPES))
 
     for playlist in user_args["spotify_input"]:
-        search_list += song_parser.parse_songs_from_spotify(user_args["spotify_id"], user_args["spotify_secret"], playlist)
+        search_list += song_parser.parse_songs_from_spotify(config.SPOTIFY_ID, config.SPOTIFY_SECRET, playlist)
 
     for textfile in user_args["inputTextfile"]:
         search_list += [line.try_separate() for line in song_parser.parse_songs_from_textfile(path=textfile)]
@@ -33,7 +37,7 @@ def main():
     
     # Create the payload with user data
     print("Creating payload...")
-    payload = usdb_handler.create_login_payload(user_args["user"], user_args["password"])
+    payload = usdb_handler.create_login_payload(config.USDB_USERNAME, config.USDB_PASSWORD)
 
     song_list = usdb_handler.native_search(login_payload=payload, search_list=search_list, find_all_matching=user_args["findAll"])
     
@@ -46,7 +50,7 @@ def main():
 
     # Create users download URL
     print("Creating personal download URL...")
-    download_url = usdb_handler.create_personal_download_url(user_args["user"])
+    download_url = usdb_handler.create_personal_download_url(config.USDB_USERNAME)
 
     # Thread folder names
     thread_folders = []

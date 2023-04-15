@@ -11,6 +11,13 @@ ZIP_URL: https://usdb.animux.de/index.php?&link=ziparchiv
 ZIP_SAVE_URL: https://usdb.animux.de/index.php?&link=ziparchiv&save=1
 DOWNLOAD_URL: https://usdb.animux.de/data/downloads
 
+# Credentials
+USDB_USERNAME: 
+USDB_PASSWORD: 
+
+SPOTIFY_ID:
+SPOTIFY_SECRET:
+
 # File Types so search for in the SONG_SOURCE_DIRECTORY
 SONG_FILE_TYPES: 
  - .mp3

@@ -8,3 +8,4 @@ docker_input/*
 *.mp3
 *.txt
 modules/__pycache__
+config.yaml
