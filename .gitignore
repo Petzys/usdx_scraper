@@ -7,5 +7,6 @@ docker_input/*
 *.jpg
 *.mp3
 *.txt
+!requirements.txt
 modules/__pycache__
 config.yaml
