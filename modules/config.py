@@ -4,7 +4,7 @@ import os, shutil
 def load_config(config_file_path:str) -> dict:
     # Copy template file if necessary
     if not os.path.isfile(config_file_path):
-        template_path = os.path.join(os.path.dirname(__file__), "..", "config.yaml.template")
+        template_path = os.path.join(os.path.dirname(__file__), "..", "usdx_parser_config.yaml.template")
         shutil.copyfile(template_path, config_file_path)
 
     with open(config_file_path, "r") as file:

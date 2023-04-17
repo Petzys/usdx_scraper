@@ -4,7 +4,7 @@ import copy
 
 from modules import cli_handler, config, song_parser, thread_handler, txt_files_handler, usdb_handler
 
-CONFIG_FILE_PATH = "config.yaml"
+CONFIG_FILE_PATH = "usdx_parser_config.yaml"
 
 # Main function
 def main():
