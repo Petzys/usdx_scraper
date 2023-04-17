@@ -31,6 +31,7 @@ def main():
         search_list += [line.try_separate() for line in song_parser.parse_songs_from_textfile(path=textfile)]
 
     search_list = list(set(search_list))
+    print(f"Found {len(search_list)} items!")
 
     # Check the USDB for matches
     print("Searching for matches...")

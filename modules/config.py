@@ -2,13 +2,16 @@ import yaml
 import os, shutil
 
 def load_config(config_file_path:str) -> dict:
+    # Copy template file if necessary
     if not os.path.isfile(config_file_path):
         template_path = os.path.join(os.path.dirname(__file__), "..", "config.yaml.template")
         shutil.copyfile(template_path, config_file_path)
+
     with open(config_file_path, "r") as file:
         return yaml.safe_load(file)
 
 def update_config(config_file_path:str, config:dict, user_args:dict) -> dict:
+    # Update Values in config file to save for later
     if user_args["user"] and (not config["USDB_USERNAME"] or config["USDB_USERNAME"] is not user_args["user"]): 
         config["USDB_USERNAME"] = user_args["user"]  
 
@@ -26,6 +29,7 @@ def update_config(config_file_path:str, config:dict, user_args:dict) -> dict:
 
     return config
 
+# Set all Values from the config.yaml as globals
 def global_config(config:dict):
     for key in config:
         globals()[key] = config[key]

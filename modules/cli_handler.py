@@ -65,8 +65,10 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     if user_args["spotify_input"] and not ((user_args["spotify_id"] and user_args["spotify_secret"]) or (config.SPOTIFY_ID and config.SPOTIFY_SECRET)):
         raise_error("Client ID and secret are required if a Spotify playlist is specified")
 
-    if user_args["input_path"] and not all([os.path.isdir(dir)] for dir in user_args["input_path"]): raise_error(f'{user_args["input_path"]} is not a valid directory. Exiting...')
-    if user_args["inputTextfile"] and not all([os.path.isfile(file)] for file in user_args["inputTextfile"]): raise_error(f'{user_args["inputTextfile"]} is not a valid file. Exiting...')
+    if user_args["input_path"] and not all([os.path.isdir(dir)] for dir in user_args["input_path"]): 
+        raise_error(f'{user_args["input_path"]} is not a valid directory. Exiting...')
+    if user_args["inputTextfile"] and not all([os.path.isfile(file)] for file in user_args["inputTextfile"]): 
+        raise_error(f'{user_args["inputTextfile"]} is not a valid file. Exiting...')
 
     return user_args
 

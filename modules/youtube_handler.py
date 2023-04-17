@@ -14,7 +14,7 @@ def get_yt_url(song:str, id:str) -> str:
         retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
         session.mount('https://', HTTPAdapter(max_retries=retries))
 
-        # Try to find if there a link to a YT video on the songs http://usdb.animux.de/ page
+        # Try to find if there a link to a YT video on the songs https://usdb.animux.de/ page
         r = session.get(config.SONG_URL+id)
         if not r.ok: raise Exception("GET failed")
 

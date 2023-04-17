@@ -3,6 +3,7 @@ import re
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from modules import config
+
 class SongSearchItem:
     def __init__(self, name_tag, artist_tag=tuple()):
         self.artist_tag_tuple = artist_tag if isinstance(artist_tag, tuple) else tuple([artist_tag])
@@ -108,6 +109,9 @@ def parse_songs_from_textfile(path:str) -> list[SongSearchItem]:
         entries = f.read().splitlines()
 
     parsed_objects = [SongSearchItem(name_tag=song) for song in entries]
+
+    for item in parsed_objects:
+        item.try_separate()
 
     return parsed_objects
 
