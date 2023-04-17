@@ -1,0 +1,83 @@
+### THIS FILE IS LOADED ONCE ON START OF THE SCRIPT; CHANGE VALUES WITH CAUTION ###
+
+# Number of threads to use
+THREAD_NUMBER: 16
+
+# URLs to usdb.animux.de (change if their URL changes)
+LOGIN_URL: https://usdb.animux.de/index.php?&link=login
+SONG_URL: https://usdb.animux.de/index.php?link=detail&id=
+SEARCH_URL: https://usdb.animux.de/?link=list
+ZIP_URL: https://usdb.animux.de/index.php?&link=ziparchiv
+ZIP_SAVE_URL: https://usdb.animux.de/index.php?&link=ziparchiv&save=1
+DOWNLOAD_URL: https://usdb.animux.de/data/downloads
+
+# Credentials
+USDB_USERNAME: 
+USDB_PASSWORD: 
+
+SPOTIFY_ID:
+SPOTIFY_SECRET:
+
+# File Types so search for in the SONG_SOURCE_DIRECTORY
+SONG_FILE_TYPES: 
+ - .mp3
+ - .wav
+ - .m4a
+
+# All words to ignore in file names
+IGNORED_WORDS:
+  - Official
+  - Video
+  - ft
+  - feat
+  - Music
+  - Lyrics
+  - the
+  - stereo
+  - mono
+  - instrumental
+  - cover
+  - Lyric
+  - Remix
+  - _
+  - Audio
+  - Live
+  - Version
+  - Performance
+  - Session
+  - Acoustic
+  - Remastered
+  - HD
+  - HQ
+  - Edit
+  - Mix
+  - Cover
+  - Tribute
+  - Mashup
+  - Bootleg
+  - Concert
+  - Version
+  - Studio
+  - Orchestra
+  - Band
+  - Official
+  - Audio
+  - Video
+  - lyrics
+  - extended
+  - full
+  - dance
+  - remake
+  - reprise
+  - reinterpretation
+  - piano
+  - guitar
+  - violin
+  - cello
+  - saxophone
+  - flute
+  - drum
+  - bass
+  - instrumental
+  - Duet
+  - Duett

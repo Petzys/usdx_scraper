@@ -7,3 +7,7 @@ docker_input/*
 *.jpg
 *.mp3
 *.txt
+!requirements.txt
+modules/__pycache__
+usdx_parser_config.yaml
+*.log

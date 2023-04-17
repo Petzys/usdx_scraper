@@ -3,3 +3,4 @@ beautifulsoup4==4.11.1
 youtube-search-python==1.6.6
 pytube==12.1.2
 html5lib==1.1
+PyYAML==6.0
