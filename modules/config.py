@@ -1,6 +1,10 @@
 import yaml
+import os, shutil
 
 def load_config(config_file_path:str) -> dict:
+    if not os.path.isfile(config_file_path):
+        template_path = os.path.join(os.path.dirname(__file__), "..", "config.yaml.template")
+        shutil.copyfile(template_path, config_file_path)
     with open(config_file_path, "r") as file:
         return yaml.safe_load(file)
 
