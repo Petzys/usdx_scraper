@@ -8,6 +8,9 @@ import zipfile
 from bs4 import BeautifulSoup
 import requests
 from requests.adapters import HTTPAdapter, Retry
+import logging
+
+logger = logging.getLogger(__name__)
 
 from modules import config, song_parser
 
@@ -39,7 +42,7 @@ def create_search_payload(interpret:str="", title:str="", edition:str="", langua
 def add_switched_search_items(search_list:list[song_parser.SongSearchItem]) -> list[song_parser.SongSearchItem]:
     new_list = copy.deepcopy(search_list)
     for item in search_list:
-        #print(f"Appending switched item {SongSearchItem(item.artist_tag_tuple, item.name_tag_tuple)}")
+        #logger.info(f"Appending switched item {SongSearchItem(item.artist_tag_tuple, item.name_tag_tuple)}")
         new_list.append(song_parser.SongSearchItem(item.artist_tag_tuple, item.name_tag_tuple))
 
     return new_list
@@ -74,17 +77,17 @@ def native_search(login_payload:dict, search_list:list[song_parser.SongSearchIte
             # Check for next pages
             string_regex = re.compile(r'There\s*are\s*\d{0,9999}\s*results\s*on\s*\d{0,9999}\s*page')
             counter_string = search_soup.find(string=string_regex)
-            #print(f"Found counter String: {counter_string}")
+            #logger.info(f"Found counter String: {counter_string}")
             
             counter = int(re.search(r'\d+', counter_string).group(0))
-            #print(f"Found counter: {counter}")
+            #logger.info(f"Found counter: {counter}")
             
             no_of_pages = ceil(counter/100)
-            #print(f"No of Pages: {no_of_pages}")
+            #logger.info(f"No of Pages: {no_of_pages}")
 
             for i in range(no_of_pages):
                 if i != 0:
-                    #print(f"Changing pages to : {i*100}")
+                    #logger.info(f"Changing pages to : {i*100}")
                     payload = create_search_payload(interpret=artist_string, title=title_string, start=i*100)
                     response = session.post(config.SEARCH_URL, data=payload)
 
@@ -100,7 +103,7 @@ def native_search(login_payload:dict, search_list:list[song_parser.SongSearchIte
                     title = a_tag.contents[0]
                     artist = tag.find("td").contents[0]
 
-                    print(f"Found match: {search_item} -> {artist} - {title}")
+                    logger.debug(f"Found match: {search_item} -> {artist} - {title}")
                     song_list.append([id, f"{artist} - {title}"])
 
             if not find_all_matching: search_list.pop(count)

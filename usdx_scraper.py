@@ -1,10 +1,13 @@
 import threading
 import os, sys, argparse, shutil
 import copy
+import logging
 
 from modules import cli_handler, config, song_parser, thread_handler, txt_files_handler, usdb_handler
 
 CONFIG_FILE_PATH = "usdx_parser_config.yaml"
+
+logger = logging.getLogger(__name__)
 
 # Main function
 def main():
@@ -14,6 +17,13 @@ def main():
     user_parser = argparse.ArgumentParser(prog="USDX Song Scraper", description="Scrapes your music files, downloads the USDX text files and according YouTube videos")
 
     user_args = cli_handler.parse_cli_input(parser=user_parser)
+
+    logging_handlers = cli_handler.logging_config(user_args=user_args)
+
+    # Root loggers basic level will be set to zero (root logger level must always be lower or the same as sub-loggers for messages to appear), specific levels are specified via handlers
+    logging.basicConfig(level=0, handlers=logging_handlers);
+    
+    cli_handler.validate_user_args(user_args=user_args)
 
     config_dict = config.update_config(config_file_path=CONFIG_FILE_PATH, config=config_dict, user_args=user_args)
     config.global_config(config=config_dict)
@@ -31,28 +41,29 @@ def main():
         search_list += [line.try_separate() for line in song_parser.parse_songs_from_textfile(path=textfile)]
 
     search_list = list(set(search_list))
-    print(f"Found {len(search_list)} items!")
-
-    # Check the USDB for matches
-    print("Searching for matches...")
+    logger.info(f"Parsed {len(search_list)} items!")
     
     # Create the payload with user data
-    print("Creating payload...")
+    logger.info("Creating payload...")
     payload = usdb_handler.create_login_payload(config.USDB_USERNAME, config.USDB_PASSWORD)
 
+    # Check the USDB for matches
+    logger.info("Searching for matches...")
     song_list = usdb_handler.native_search(login_payload=payload, search_list=search_list, find_all_matching=user_args["findAll"])
     
     # Remove songs which are already in the output directory
+    logger.info("Removing duplicates...")
     song_list = txt_files_handler.remove_duplicates(directory=user_args["output_path"],song_list=song_list)
 
     # Create cookies based on that
-    print("Creating cookies...")
+    logger.info("Creating cookies...")
     cookie_list = usdb_handler.create_cookies(song_list)
 
     # Create users download URL
-    print("Creating personal download URL...")
+    logger.info("Creating personal download URL...")
     download_url = usdb_handler.create_personal_download_url(config.USDB_USERNAME)
 
+    logger.info("Downloading Songs...")
     # Thread folder names
     thread_folders = []
     for i in range(config.THREAD_NUMBER):
@@ -99,7 +110,7 @@ def main():
                     shutil.move(full_song_path, target_path)
         shutil.rmtree(full_thread_folder_path)
 
-    print("Finished")
+    logger.info("Finished")
     
     return
 

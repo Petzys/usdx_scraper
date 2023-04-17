@@ -6,8 +6,11 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 from youtubesearchpython import VideosSearch
 from pytube import YouTube
+import logging
 
 from modules import config
+
+logger = logging.getLogger(__name__)
 
 def get_yt_url(song:str, id:str) -> str:
     with requests.Session() as session:
@@ -35,7 +38,7 @@ def get_yt_url(song:str, id:str) -> str:
     else:
         # Search for videos on YT and add links to song_list
         search_key = re.sub(r"\s*\([Dd][Uu][Ee][Tt]\)\s*|\s*\[[Dd][Uu][Ee][Tt]\]\s*|\s*\{[Dd][Uu][Ee][Tt]\}\s*|\s*[Dd][Uu][Ee][Tt]\s*", "", song)
-        print(f"Searching for: {search_key} Music Video")
+        logger.debug(f"Searching for: {search_key} Music Video")
         videosSearch = VideosSearch(f'{search_key} Music Video', limit = 1)
         return videosSearch.result()["result"][0]["link"]
 
@@ -49,13 +52,13 @@ def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
     desired_path = os.path.join(songs_directory, song)
 
     if song in os.listdir(songs_directory):
-        #print(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
+        #logger.warning(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
         desired_path = os.path.join(songs_directory, folder)
         song = folder
     elif folder in os.listdir(songs_directory):
         os.rename(os.path.join(songs_directory, folder), desired_path)
     else: 
-        print(f"Could not find directory {os.path.join(songs_directory, folder)}")
+        logger.error(f"Could not find directory {os.path.join(songs_directory, folder)}")
         raise FileNotFoundError
     
     for file in os.listdir(desired_path):
@@ -63,7 +66,7 @@ def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
         if os.path.isfile(os.path.join(desired_path, file)):
             os.rename(os.path.join(desired_path, file), os.path.join(desired_path, f"{song}{file_ending}")) 
         else:
-            print(f"Could not find file {os.path.join(desired_path, file)}")
+            logger.error(f"Could not find file {os.path.join(desired_path, file)}")
             raise FileNotFoundError
 
     # Download the files, age-restricted or else will be skipped

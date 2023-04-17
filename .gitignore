@@ -10,3 +10,4 @@ docker_input/*
 !requirements.txt
 modules/__pycache__
 usdx_parser_config.yaml
+*.log

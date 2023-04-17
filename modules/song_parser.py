@@ -3,6 +3,9 @@ import re
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from modules import config
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SongSearchItem:
     def __init__(self, name_tag, artist_tag=tuple()):
@@ -21,10 +24,10 @@ class SongSearchItem:
         return NotImplemented
 
     def __str__(self):
-        return f"Search item: artists={self.artist_tag_tuple}; names={self.name_tag_tuple}"
+        return f"SearchItem={self.artist_tag_tuple}{self.name_tag_tuple}"
 
     def __repr__(self):
-        return f"Search item: artists={self.artist_tag_tuple}; names={self.name_tag_tuple}"
+        return f"SearchItem={self.artist_tag_tuple}{self.name_tag_tuple}"
 
     def __len__(self) -> int:
         return len(self.artist_tag_tuple) + len(self.name_tag_tuple)
@@ -62,7 +65,7 @@ def parse_songs_from_directory(directory:str, filetypes:list) -> list[SongSearch
 
     parsed_objects = [SongSearchItem(name_tag=song) for song in parsed_songs]
     
-    print(f"Successfully parsed all songs from {directory}")
+    logger.info(f"Successfully parsed all songs from {directory}")
 
     return parsed_objects
 
@@ -82,7 +85,7 @@ def clean_search_list(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     
     # delete all entries with are only one entry (to prevent false matching later)
     search_list = [item for item in search_list if len(item)>1]
-    print(f"Successfully stripped search list")
+    logger.info(f"Successfully stripped search list")
     return (search_list)
 
 ##### Spotify Parsing #####
@@ -99,7 +102,7 @@ def parse_songs_from_spotify(client_id:str, client_secret:str, playlist_identifi
         item = SongSearchItem(name_set, artist_set)
         search_list.append(item)
 
-    print(f"Successfully got parsed playlist from Spotify: {playlist_identifier}")
+    logger.info(f"Successfully got parsed playlist from Spotify: {playlist_identifier}")
     return search_list
 
 ##### Textfile Parsing #####
