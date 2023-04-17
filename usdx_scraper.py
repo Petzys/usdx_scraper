@@ -50,6 +50,7 @@ def main():
     # Check the USDB for matches
     logger.info("Searching for matches...")
     song_list = usdb_handler.native_search(login_payload=payload, search_list=search_list, find_all_matching=user_args["findAll"])
+    logger.info(f"Found {len(song_list)} matches!")
     
     # Remove songs which are already in the output directory
     logger.info("Removing duplicates...")
