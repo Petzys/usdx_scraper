@@ -30,3 +30,12 @@ jobs:
           push: true
           platforms: linux/amd64, linux/arm64
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/usdx_scraper:latest
+
+      - 
+        name: Docker Hub Description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          repository: mrpetzi/usdx_scraper
+
