@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 
 COPY usdx_scraper.py .
 COPY modules/ ./modules/
-COPY usdx_parser_config.yaml.template .
+COPY usdx_scraper_config.yaml.template .
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt

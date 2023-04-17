@@ -5,7 +5,7 @@ import logging
 
 from modules import cli_handler, config, song_parser, thread_handler, txt_files_handler, usdb_handler
 
-CONFIG_FILE_PATH = "usdx_parser_config.yaml"
+CONFIG_FILE_PATH = "usdx_scraper_config.yaml"
 
 logger = logging.getLogger(__name__)
 

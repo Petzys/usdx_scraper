@@ -17,9 +17,9 @@ Output defaults to `./songs/`
 - usdb.animux Credentials
 - If Spotify is used: Spotify Web API Credentials (Client ID and secret)
 
-### Config file usdx_parser_config.yaml
-The repository contains a template config which will be used to create a valid `usdx_parser_config.yaml` on the first run. It contains environment variables for the parser to run and also stores the https://usdb.animux.de/ username and password in addition to the spotify client id and secret for later use. 
-If the `usdx_parser_config.yaml` contains the credentials, it is not necessary to put them in the arguments of the command.
+### Config file usdx_scraper_config.yaml
+The repository contains a template config which will be used to create a valid `usdx_scraper_config.yaml` on the first run. It contains environment variables for the parser to run and also stores the https://usdb.animux.de/ username and password in addition to the spotify client id and secret for later use. 
+If the `usdx_scraper_config.yaml` contains the credentials, it is not necessary to put them in the arguments of the command.
 
 You can also change the number of threads here. It runs on 16 threads by default.
 
