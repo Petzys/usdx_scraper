@@ -5,24 +5,36 @@ UltraStar-Deluxe: https://github.com/UltraStar-Deluxe/USDX
 
 Parses songs from:
 - Directories with your songs (mp3, wav, m4a)
-- public Spotify Playlists
-- a input file in the format: `Artist - Title`
+- public Spotify playlists
+- a input file in the format: `Artist - Title` or `Artist` or `Title` 
 
 You can specify multiple inputs at once.
 
 Output defaults to `./songs/`
 
-Required parameters:
+### Required parameters
 - At least one input (Input directory, Spotify Playlist or Input.txt)
 - usdb.animux Credentials
 - If Spotify is used: Spotify Web API Credentials (Client ID and secret)
 
+### Config file usdx_parser_config.yaml
+The repository contains a template config which will be used to create a valid `usdx_parser_config.yaml` on the first run. It contains environment variables for the parser to run and also stores the https://usdb.animux.de/ username and password in addition to the spotify client id and secret for later use. 
+If the `usdx_parser_config.yaml` contains the credentials, it is not necessary to put them in the arguments of the command.
+
+You can also change the number of threads here. It runs on 16 threads by default.
+
+### Docker
 Also available on Docker Hub: https://hub.docker.com/r/mrpetzi/usdx_scraper
 
-The scraper heavily relies on https://usdb.hehoe.de/ and http://usdb.animux.de/ to work. Might optimize this in the future.
+`docker run -v ${PWD}/docker_input:/data -it usdx_scraper ...`
 
+### Dependencies
+The scraper heavily relies https://usdb.animux.de/ to work as it is the main database to my knowledge. Feel free to open an issue if you have ideas for more sources.
+
+### Overview
 ```
-usage: USDX Song Scraper [-h] [-i INPUT [INPUT ...]] [-s SPOTIFY [SPOTIFY ...]] [-it INPUTTEXTFILE [INPUTTEXTFILE ...]] [-fa] [-o OUTPUT] [-sid SPOTIFYCLIENTID] [-ssc SPOTIFYCLIENTSECRET] [-u USER] [-p PASSWORD]
+usage: USDX Song Scraper [-h] [-i INPUT [INPUT ...]] [-s SPOTIFY [SPOTIFY ...]] [-it INPUTTEXTFILE [INPUTTEXTFILE ...]] [-fa] [-o OUTPUT]
+                         [-sid SPOTIFYCLIENTID] [-ssc SPOTIFYCLIENTSECRET] [-u USER] [-p PASSWORD] [-d]
 
 Scrapes your music files, downloads the USDX text files and according YouTube videos
 
@@ -44,4 +56,5 @@ options:
   -u USER, --user USER  The user to use on http://usdb.animux.de/, required
   -p PASSWORD, --password PASSWORD
                         The password for the user, required
+  -d, --debug           Set to save a log file to the current directory. Default name: usdx_scraper_TIMESTAMP.log
 ```

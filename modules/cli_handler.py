@@ -85,7 +85,7 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     parser.add_argument("-u", "--user", action="store", help="The user to use on http://usdb.animux.de/, required")
     parser.add_argument("-p", "--password", action="store", help="The password for the user, required")
 
-    parser.add_argument('-d', '--debug', action="store_true", help="Set to save a log file to the current directory. Default name: usdx_scraper_%H_%M_%S_%d_%m_%Y.log")
+    parser.add_argument('-d', '--debug', action="store_true", help="Set to save a log file to the current directory. Default name: usdx_scraper_TIMESTAMP.log")
 
     args = parser.parse_args()
 
