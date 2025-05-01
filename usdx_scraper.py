@@ -66,14 +66,23 @@ class SongSearchItem:
             return self
         elif "-" in tag_list[0]:
             s = tag_list[0].split("-")
-            self.artist_tag_tuple = tuple(s[:-1])
-            self.name_tag_tuple = tuple(s[-1:])
+            
+            artist_tag_tuple = tuple(s[:-1])
+            self.artist_tag_tuple = self.strip(artist_tag_tuple)
+
+            name_tag_tuple = tuple(s[-1:])
+            self.name_tag_tuple = self.strip(name_tag_tuple)
+
             return self
         else:
             return self
 
     def get_list(self) -> list:
         return list(self.name_tag_tuple)+list(self.artist_tag_tuple)
+    
+    @staticmethod
+    def strip(tags):
+        return tuple(tag.strip() for tag in tags)
 
 def raise_error(err_massage:str):
     print(err_massage)
