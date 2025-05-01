@@ -4,7 +4,7 @@ import spotipy
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 from youtubesearchpython import VideosSearch
-from pytube import YouTube
+import yt_dlp
 from spotipy.oauth2 import SpotifyClientCredentials
 from math import ceil
 import copy
@@ -342,10 +342,6 @@ def get_yt_url(song:str, id:str) -> str:
 
 # Download all the songs and rename the folders to the correct song names from song_list
 def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
-
-    yt = YouTube(url)
-    stream = yt.streams.filter(only_audio=False, file_extension="mp4").first()
-
     # Rename folders
     desired_path = os.path.join(songs_directory, song)
 
@@ -368,8 +364,20 @@ def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
             raise FileNotFoundError
 
     # Download the files, age-restricted or else will be skipped
-    out_file = stream.download(output_path=desired_path, filename=f'{song}.mp3', skip_existing=True)
-        
+    ydl_opts = {
+        'format': 'bestaudio',
+        'outtmpl': f'{desired_path}/{song}',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+        }],
+        'quiet': True,
+        'nooverwrites': True,
+    }
+    
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+
     return song
 
 def remove_duplicates(directory:str, song_list:str) -> list[list]:
