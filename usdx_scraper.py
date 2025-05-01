@@ -340,33 +340,36 @@ def get_yt_url(song:str, id:str) -> str:
         videosSearch = VideosSearch(f'{search_key} Music Video', limit = 1)
         return videosSearch.result()["result"][0]["link"]
 
-# Download all the songs and rename the folders to the correct song names from song_list
-def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
-    # Rename folders
-    desired_path = os.path.join(songs_directory, song)
-
-    if song in os.listdir(songs_directory):
+def rename_song_folder_and_contents(song:str, folder:str, songs_directory:str) -> str:
+    song_directory_contents = os.listdir(songs_directory)
+    song_folder = os.path.join(songs_directory, song)
+    
+    # Rename folder to match the song name
+    if song in song_directory_contents:
         #print(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
-        desired_path = os.path.join(songs_directory, folder)
+        song_folder = os.path.join(songs_directory, folder)
         song = folder
-    elif folder in os.listdir(songs_directory):
-        os.rename(os.path.join(songs_directory, folder), desired_path)
+    elif folder in song_directory_contents:
+        os.rename(os.path.join(songs_directory, folder), song_folder)
     else: 
         print(f"Could not find directory {os.path.join(songs_directory, folder)}")
         raise FileNotFoundError
     
-    for file in os.listdir(desired_path):
+    # Rename all files in the folder to match the song name
+    for file in os.listdir(song_folder):
         file_ending = os.path.splitext(file)[-1]
-        if os.path.isfile(os.path.join(desired_path, file)):
-            os.rename(os.path.join(desired_path, file), os.path.join(desired_path, f"{song}{file_ending}")) 
+        if os.path.isfile(os.path.join(song_folder, file)):
+            os.rename(os.path.join(song_folder, file), os.path.join(song_folder, f"{song}{file_ending}")) 
         else:
-            print(f"Could not find file {os.path.join(desired_path, file)}")
+            print(f"Could not find file {os.path.join(song_folder, file)}")
             raise FileNotFoundError
+    
+    return song_folder
 
-    # Download the files, age-restricted or else will be skipped
+def download_song(song:str, song_folder_path:str, url:str) -> str:
     ydl_opts = {
         'format': 'bestaudio',
-        'outtmpl': f'{desired_path}/{song}',
+        'outtmpl': f'{song_folder_path}/{song}',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -503,7 +506,8 @@ def main():
             url = get_yt_url(song=song[1], id=song[0])
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Downloading {song[1]}')
-            folder = download_song(song=song[1], folder=folder, songs_directory=user_args["output_path"], url=url)
+            song_folder_path = rename_song_folder_and_contents(song=song[1], folder=folder, songs_directory=user_args["output_path"])
+            folder = download_song(song=song[1], song_folder_path=song_folder_path, url=url)
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
             clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
