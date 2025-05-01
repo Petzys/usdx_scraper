@@ -37,6 +37,10 @@ options:
   -fa, --findAll        Set to search for ALL songs matching the inputs. Otherwise the parser will try to find exactly one song per search entry
   -o OUTPUT, --output OUTPUT
                         The output directory where all songs and their text files should be saved
+  -ft FILETYPE, --filetype FILETYPE
+                        The file type to be used for the downloaded songs. Either MP3 or MP4. Default is MP3
+  -mvr MAXVIDRES, --maxVidRes MAXVIDRES
+                        Maximum video resolution to be used for the downloaded songs. Default is 480p. Only used if filetype is MP4
   -sid SPOTIFYCLIENTID, --spotifyClientId SPOTIFYCLIENTID
                         The Client ID to be used for accessing Spotifies Web API
   -ssc SPOTIFYCLIENTSECRET, --spotifyClientSecret SPOTIFYCLIENTSECRET

@@ -300,7 +300,7 @@ def clean_tags(songs_directory:str, song_folder:str):
         # Set the tags to set with validate_txt_tags()
         filetype = os.path.splitext(file)[-1]
         match filetype:
-            case ".mp3":
+            case (".mp3" | ".mp4"):
                 tags["MP3"] = f"{file}\n"
                 tags["VIDEO"] = f"{file}\n"
             case ".jpg":
@@ -366,8 +366,15 @@ def rename_song_folder_and_contents(song:str, folder:str, songs_directory:str) -
     
     return song_folder
 
-def download_song(song:str, song_folder_path:str, url:str) -> str:
-    ydl_opts = {
+def download_song(song:str, song_folder_path:str, url:str, file_media_type: str, max_video_resolution: str) -> str:
+    yt_opts_mp4 = {
+        'format': f"bestvideo[height<={max_video_resolution}][ext=m4a]+bestaudio[ext=m4a]/best[height<={max_video_resolution}][ext=mp4]/best",
+        'outtmpl': f'{song_folder_path}/{song}.mp4',
+        'quiet': True,
+        'nooverwrites': True,
+    }
+
+    yt_opts_mp3 = {
         'format': 'bestaudio',
         'outtmpl': f'{song_folder_path}/{song}',
         'postprocessors': [{
@@ -378,7 +385,8 @@ def download_song(song:str, song_folder_path:str, url:str) -> str:
         'nooverwrites': True,
     }
     
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    yt_opts = yt_opts_mp3 if file_media_type == "MP3" else yt_opts_mp4
+    with yt_dlp.YoutubeDL(yt_opts) as ydl:
         ydl.download([url])
 
     return song
@@ -398,6 +406,8 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 
     # Output
     parser.add_argument("-o", "--output", action="store", default="songs", help="The output directory where all songs and their text files should be saved")
+    parser.add_argument("-ft", "--filetype", action="store", default="MP3", help="The file type to be used for the downloaded songs. Either MP3 or MP4. Default is MP3")
+    parser.add_argument("-mvr", "--maxVidRes", action="store", default="480", help="Maximum video resolution to be used for the downloaded songs. Default is 480p. Only used if filetype is MP4")
 
     # Spotify OAuth
     parser.add_argument("-sid", "--spotifyClientId", action="store", help="The Client ID to be used for accessing Spotifies Web API")
@@ -421,6 +431,8 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     input_ways = [user_args["input_path"], user_args["spotify_input"], user_args["inputTextfile"]]
 
     user_args["output_path"] = args.output
+    user_args["media_filetype"] = args.filetype
+    user_args["maximum_video_resolution"] = args.maxVidRes
 
     user_args["spotify_id"] = args.spotifyClientId
     user_args["spotify_secret"] = args.spotifyClientSecret
@@ -507,7 +519,7 @@ def main():
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Downloading {song[1]}')
             song_folder_path = rename_song_folder_and_contents(song=song[1], folder=folder, songs_directory=user_args["output_path"])
-            folder = download_song(song=song[1], song_folder_path=song_folder_path, url=url)
+            folder = download_song(song=song[1], song_folder_path=song_folder_path, url=url, file_media_type=user_args["media_filetype"], max_video_resolution=user_args["maximum_video_resolution"])
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
             clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
