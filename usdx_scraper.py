@@ -100,12 +100,30 @@ def parse_songs_from_directory(directory:str, filetypes:list) -> list[SongSearch
 
     return parsed_objects
 
+def get_all_tracks(spotify_client: spotipy.Spotify, playlist_identifier:str):
+    tracks = []
+    offset = 0
+    limit = 100
+
+    while True:
+        print(f"Query Tracks {offset} to {offset+limit}")
+        playlist = spotify_client.playlist_items(playlist_id=playlist_identifier, fields="items(track(name,artists(name)))", offset=offset, limit=limit)
+        items = playlist["items"]
+
+        if not items:
+            break
+
+        tracks.extend(items)
+        offset += limit
+    
+    return tracks
+
 def parse_songs_from_spotify(client_id:str, client_secret:str, playlist_identifier:str) -> list[SongSearchItem]:
     spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
 
-    playlist = spotify.playlist_items(playlist_id=playlist_identifier, fields="items(track(name,artists(name)))")
+    playlist_tracks = get_all_tracks(spotify, playlist_identifier)
     search_list = []
-    for track in playlist["items"]:
+    for track in playlist_tracks:
         track = track["track"]
         artist_set = tuple([artist["name"] for artist in track["artists"]])
         name_set = tuple([track["name"]])
