@@ -4,7 +4,7 @@ import spotipy
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 from youtubesearchpython import VideosSearch
-from pytube import YouTube
+import yt_dlp
 from spotipy.oauth2 import SpotifyClientCredentials
 from math import ceil
 import copy
@@ -309,7 +309,7 @@ def clean_tags(songs_directory:str, song_folder:str):
         # Set the tags to set with validate_txt_tags()
         filetype = os.path.splitext(file)[-1]
         match filetype:
-            case ".mp3":
+            case (".mp3" | ".mp4"):
                 tags["MP3"] = f"{file}\n"
                 tags["VIDEO"] = f"{file}\n"
             case ".jpg":
@@ -354,36 +354,55 @@ def get_yt_url(song:str, id:str) -> str:
         videosSearch = VideosSearch(f'{search_key} Music Video', limit = 1)
         return videosSearch.result()["result"][0]["link"]
 
-# Download all the songs and rename the folders to the correct song names from song_list
-def download_song(song:str, folder:str, songs_directory:str, url:str) -> str:
-
-    yt = YouTube(url)
-    stream = yt.streams.filter(only_audio=False, file_extension="mp4").first()
-
-    # Rename folders
-    desired_path = os.path.join(songs_directory, song)
-
-    if song in os.listdir(songs_directory):
+def rename_song_folder_and_contents(song:str, folder:str, songs_directory:str) -> str:
+    song_directory_contents = os.listdir(songs_directory)
+    song_folder = os.path.join(songs_directory, song)
+    
+    # Rename folder to match the song name
+    if song in song_directory_contents:
         #print(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
-        desired_path = os.path.join(songs_directory, folder)
+        song_folder = os.path.join(songs_directory, folder)
         song = folder
-    elif folder in os.listdir(songs_directory):
-        os.rename(os.path.join(songs_directory, folder), desired_path)
+    elif folder in song_directory_contents:
+        os.rename(os.path.join(songs_directory, folder), song_folder)
     else: 
         print(f"Could not find directory {os.path.join(songs_directory, folder)}")
         raise FileNotFoundError
     
-    for file in os.listdir(desired_path):
+    # Rename all files in the folder to match the song name
+    for file in os.listdir(song_folder):
         file_ending = os.path.splitext(file)[-1]
-        if os.path.isfile(os.path.join(desired_path, file)):
-            os.rename(os.path.join(desired_path, file), os.path.join(desired_path, f"{song}{file_ending}")) 
+        if os.path.isfile(os.path.join(song_folder, file)):
+            os.rename(os.path.join(song_folder, file), os.path.join(song_folder, f"{song}{file_ending}")) 
         else:
-            print(f"Could not find file {os.path.join(desired_path, file)}")
+            print(f"Could not find file {os.path.join(song_folder, file)}")
             raise FileNotFoundError
+    
+    return song_folder
 
-    # Download the files, age-restricted or else will be skipped
-    out_file = stream.download(output_path=desired_path, filename=f'{song}.mp3', skip_existing=True)
-        
+def download_song(song:str, song_folder_path:str, url:str, file_media_type: str, max_video_resolution: str) -> str:
+    yt_opts_mp4 = {
+        'format': f"bestvideo[height<={max_video_resolution}][ext=m4a]+bestaudio[ext=m4a]/best[height<={max_video_resolution}][ext=mp4]/best",
+        'outtmpl': f'{song_folder_path}/{song}.mp4',
+        'quiet': True,
+        'nooverwrites': True,
+    }
+
+    yt_opts_mp3 = {
+        'format': 'bestaudio',
+        'outtmpl': f'{song_folder_path}/{song}',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+        }],
+        'quiet': True,
+        'nooverwrites': True,
+    }
+    
+    yt_opts = yt_opts_mp3 if file_media_type == "MP3" else yt_opts_mp4
+    with yt_dlp.YoutubeDL(yt_opts) as ydl:
+        ydl.download([url])
+
     return song
 
 def remove_duplicates(directory:str, song_list:str) -> list[list]:
@@ -401,6 +420,8 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 
     # Output
     parser.add_argument("-o", "--output", action="store", default="songs", help="The output directory where all songs and their text files should be saved")
+    parser.add_argument("-ft", "--filetype", action="store", default="MP3", help="The file type to be used for the downloaded songs. Either MP3 or MP4. Default is MP3")
+    parser.add_argument("-mvr", "--maxVidRes", action="store", default="480", help="Maximum video resolution to be used for the downloaded songs. Default is 480p. Only used if filetype is MP4")
 
     # Spotify OAuth
     parser.add_argument("-sid", "--spotifyClientId", action="store", help="The Client ID to be used for accessing Spotifies Web API")
@@ -424,6 +445,8 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     input_ways = [user_args["input_path"], user_args["spotify_input"], user_args["inputTextfile"]]
 
     user_args["output_path"] = args.output
+    user_args["media_filetype"] = args.filetype
+    user_args["maximum_video_resolution"] = args.maxVidRes
 
     user_args["spotify_id"] = args.spotifyClientId
     user_args["spotify_secret"] = args.spotifyClientSecret
@@ -509,7 +532,8 @@ def main():
             url = get_yt_url(song=song[1], id=song[0])
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Downloading {song[1]}')
-            folder = download_song(song=song[1], folder=folder, songs_directory=user_args["output_path"], url=url)
+            song_folder_path = rename_song_folder_and_contents(song=song[1], folder=folder, songs_directory=user_args["output_path"])
+            folder = download_song(song=song[1], song_folder_path=song_folder_path, url=url, file_media_type=user_args["media_filetype"], max_video_resolution=user_args["maximum_video_resolution"])
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
             clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
