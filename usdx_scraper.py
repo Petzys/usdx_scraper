@@ -284,10 +284,10 @@ def download_usdb_txt(payload:str, cookie:str, download_url:str, directory:str) 
     return filename
 
 # Validate all the flags in a txt file and overwrite all that are different to the parameter
-def validate_txt_tags(file_path:str, tags:dict[str, str]):
+def validate_txt_tags(file_path:str, tags:dict[str, str], encoding: str):
     # First read all the lines and get current tags
     current_tags = {}
-    with open(file_path, 'r', encoding='cp1252') as file:
+    with open(file_path, 'r', encoding=encoding) as file:
         lines = file.readlines();
         # Create dict with tag as key and value as value
         current_tags = {line.split(":")[0][1:]:line.split(":")[1] for line in lines if line.startswith("#")}
@@ -297,7 +297,7 @@ def validate_txt_tags(file_path:str, tags:dict[str, str]):
     new_tags = current_tags | tags
 
     # Write all new tags to the file and append rest of file
-    with open(file_path, 'w',  encoding='utf-8') as file:
+    with open(file_path, 'w',  encoding=encoding) as file:
         file.writelines([f"#{key}:{value}" for key,value in new_tags.items()])
         file.writelines(content)
 
@@ -316,7 +316,12 @@ def clean_tags(songs_directory:str, song_folder:str):
                 tags["COVER"] = f"{file}\n"
             case ".txt":
                 txt = file
-    validate_txt_tags(os.path.join(songs_directory, song_folder, txt), tags)
+    try:
+        validate_txt_tags(os.path.join(songs_directory, song_folder, txt), tags, "cp1252")
+    except:
+        # Some song files require using the cp1252-Encoding, while other files require using the utf-8-Encoding instead.
+        validate_txt_tags(os.path.join(songs_directory, song_folder, txt), tags, "utf-8")
+
 
 # Get all YouTube URLs: Either from the entry at SONG_URL or via YouTube search
 def get_yt_url(song:str, id:str) -> str:
