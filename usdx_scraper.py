@@ -184,52 +184,84 @@ def native_search(login_payload:dict, search_list:list[SongSearchItem], find_all
             raise Exception("Could not authenticate");
 
         for count, search_item in enumerate(search_list):
-            artist_string = " ".join(search_item.artist_tag_tuple)
-            title_string = " ".join(search_item.name_tag_tuple)
-            payload = create_search_payload(interpret=artist_string, title=title_string)
+            search_result = execute_search_for_search_item(search_item=search_item, session=session)
+            if not search_result: continue
 
-            response = session.post(SEARCH_URL, data=payload)
+            song_list += search_result
 
-            if "There are  0  results on  0 page(s)" in response.text:
-                continue
-
-            search_soup = BeautifulSoup(response.text, 'html5lib')
-
-            # Check for next pages
-            string_regex = re.compile(r'There\s*are\s*\d{0,9999}\s*results\s*on\s*\d{0,9999}\s*page')
-            counter_string = search_soup.find(string=string_regex)
-            #print(f"Found counter String: {counter_string}")
-            
-            counter = int(re.search(r'\d+', counter_string).group(0))
-            #print(f"Found counter: {counter}")
-            
-            no_of_pages = ceil(counter/100)
-            #print(f"No of Pages: {no_of_pages}")
-
-            for i in range(no_of_pages):
-                if i != 0:
-                    #print(f"Changing pages to : {i*100}")
-                    payload = create_search_payload(interpret=artist_string, title=title_string, start=i*100)
-                    response = session.post(SEARCH_URL, data=payload)
-
-                search_soup = BeautifulSoup(response.text, 'html5lib')
-
-                result_regex = re.compile(r'list_tr1|list_tr2')
-                href_regex = re.compile(r'\?link=detail&id=')
-                result_tags = search_soup.findAll("tr", attrs={"class":result_regex, "onmouseover":"this.className='list_hover'"})
-
-                for tag in result_tags:
-                    a_tag = tag.find("a", recursive=True, href=href_regex)
-                    id = parse_qs(urlparse(a_tag.get("href")).query)['id'][0]
-                    title = a_tag.contents[0]
-                    artist = tag.find("td").contents[0]
-
-                    print(f"Found match: {search_item} -> {artist} - {title}")
-                    song_list.append([id, f"{artist} - {title}"])
-
-            if not find_all_matching: search_list.pop(count)
+            if not find_all_matching:
+                search_list.pop(count)
 
     return song_list
+
+def execute_search_for_search_item(search_item:SongSearchItem, session: requests.Session) -> list[list]:
+    artist_string = " ".join(search_item.artist_tag_tuple)
+    title_string = " ".join(search_item.name_tag_tuple)
+
+    search_results = execute_search(artist_string=artist_string, title_string=title_string, session=session)
+
+    if search_results:
+        return search_results
+
+    has_multiple_artists = len(search_item.artist_tag_tuple) > 1
+    if has_multiple_artists:
+        print(f"Could not find any results for {search_item}. Retrying with artists separated")
+        
+        for artist in search_item.artist_tag_tuple:
+            search_results = execute_search(artist_string=artist, title_string=title_string, session=session)
+
+            if search_results:
+                return search_results
+    
+    return []
+
+
+def execute_search(artist_string:str, title_string:str, session: requests.Session) -> list[list]:
+    payload = create_search_payload(interpret=artist_string, title=title_string)
+    search_string_representation = f"(artist_string: {artist_string}, title_string: {title_string})"
+
+    response = session.post(SEARCH_URL, data=payload)
+
+    if "There are  0  results on  0 page(s)" in response.text:
+        # print(f"Could not find any results for {search_string_representation}")
+        return []
+
+    search_soup = BeautifulSoup(response.text, 'html5lib')
+
+    # Check for next pages
+    string_regex = re.compile(r'There\s*are\s*\d{0,9999}\s*results\s*on\s*\d{0,9999}\s*page')
+    counter_string = search_soup.find(string=string_regex)
+    #print(f"Found counter String: {counter_string}")
+    
+    counter = int(re.search(r'\d+', counter_string).group(0))
+    #print(f"Found counter: {counter}")
+    
+    no_of_pages = ceil(counter/100)
+    #print(f"No of Pages: {no_of_pages}")
+
+    search_results = []
+    for i in range(no_of_pages):
+        if i != 0:
+            #print(f"Changing pages to : {i*100}")
+            payload = create_search_payload(interpret=artist_string, title=title_string, start=i*100)
+            response = session.post(SEARCH_URL, data=payload)
+
+        search_soup = BeautifulSoup(response.text, 'html5lib')
+
+        result_regex = re.compile(r'list_tr1|list_tr2')
+        href_regex = re.compile(r'\?link=detail&id=')
+        result_tags = search_soup.findAll("tr", attrs={"class":result_regex, "onmouseover":"this.className='list_hover'"})
+
+        for tag in result_tags:
+            a_tag = tag.find("a", recursive=True, href=href_regex)
+            id = parse_qs(urlparse(a_tag.get("href")).query)['id'][0]
+            title = a_tag.contents[0]
+            artist = tag.find("td").contents[0]
+
+            print(f"Found match: {search_string_representation} -> {artist} - {title}")
+            search_results.append([id, f"{artist} - {title}"])
+
+    return search_results
 
 # Create a list of cookies which contain all song IDs
 def create_cookies(song_list:list) -> list:
