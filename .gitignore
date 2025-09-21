@@ -1,12 +1,13 @@
-songs*
+output/
+input/
+
 .cache
 *.htm
 input.txt
 docker_input/*
 .DS_Store
-*.jpg
-*.mp3
-*.txt
+
 .env
+
 # IDE
 .idea
