@@ -7,3 +7,6 @@ docker_input/*
 *.jpg
 *.mp3
 *.txt
+
+# IDE
+.idea
