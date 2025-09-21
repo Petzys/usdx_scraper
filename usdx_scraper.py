@@ -8,6 +8,7 @@ import yt_dlp
 from spotipy.oauth2 import SpotifyClientCredentials
 from math import ceil
 import copy
+from dotenv import load_dotenv
 
 # General
 LOGIN_URL = 'https://usdb.animux.de/index.php?&link=login'
@@ -501,8 +502,8 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     user_args["spotify_id"] = args.spotifyClientId
     user_args["spotify_secret"] = args.spotifyClientSecret
 
-    user_args["user"] = args.user
-    user_args["password"] = args.password
+    user_args["user"] = args.user or os.getenv("USDX_USER")
+    user_args["password"] = args.password or os.getenv("USDX_PASSWORD")
 
     if not any(input_ways): raise_error("At least one input is required. Exiting...")
     if not (user_args["user"] and user_args["password"]): raise_error("Username and password required. Exiting...")
@@ -519,6 +520,7 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 def main():
     parser = argparse.ArgumentParser(prog="USDX Song Scraper", description="Scrapes your music files, downloads the USDX text files and according YouTube videos")
 
+    load_dotenv()
     user_args = parse_cli_input(parser)
 
     search_list = []
