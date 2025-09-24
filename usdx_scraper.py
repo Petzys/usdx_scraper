@@ -1,21 +1,22 @@
-import requests, os, sys, argparse, shutil
-import yt_dlp
+import os, sys, argparse
 import copy
 from dotenv import load_dotenv
 
+from src.sources.ColorPrint import ColorPrint
+from src.sources.Filesystem import Filesystem
 from src.sources.SongSearchItem import SongSearchItem
 from src.sources.lyrics.UsdbAnimuxDe import UsdbAnimuxDe
+from src.sources.media.Youtube import Youtube
 from src.sources.songs.Directory import Directory
 from src.sources.songs.File import File
 from src.sources.songs.Spotify import Spotify
 
 
 def raise_error(err_massage:str):
-    print(err_massage)
+    ColorPrint.print(ColorPrint.FAIL, err_massage)
     sys.exit(1)
 
-
-
+# Expand the list by switching the artist and title tags.
 def add_switched_search_items(search_list:list[SongSearchItem]) -> list[SongSearchItem]:
     new_list = copy.deepcopy(search_list)
     for item in search_list:
@@ -24,102 +25,7 @@ def add_switched_search_items(search_list:list[SongSearchItem]) -> list[SongSear
 
     return new_list
 
-# Validate all the flags in a txt file and overwrite all that are different to the parameter
-def validate_txt_tags(file_path:str, tags:dict[str, str], encoding: str):
-    # First read all the lines and get current tags
-    current_tags = {}
-    with open(file_path, 'r', encoding=encoding) as file:
-        lines = file.readlines()
-        # Create dict with tag as key and value as value
-        current_tags = {line.split(":")[0][1:]:line.split(":")[1] for line in lines if line.startswith("#")}
-        content = lines[len(current_tags):]
-
-    # Merge both dicts, tags is dominant and overwrites current_tags if keys match
-    new_tags = current_tags | tags
-
-    # Write all new tags to the file and append rest of file
-    with open(file_path, 'w',  encoding=encoding) as file:
-        file.writelines([f"#{key}:{value}" for key,value in new_tags.items()])
-        file.writelines(content)
-
-# Rename all tags in the txt files to match the files in the directory
-def clean_tags(songs_directory:str, song_folder:str):
-    tags = {}
-    txt = ""
-    files = os.listdir(os.path.join(songs_directory, song_folder))
-    for file in files:
-        # Set the tags to set with validate_txt_tags()
-        filetype = os.path.splitext(file)[-1]
-        match filetype:
-            case (".mp3" | ".mp4"):
-                tags["MP3"] = f"{file}\n"
-                tags["VIDEO"] = f"{file}\n"
-            case ".jpg":
-                tags["COVER"] = f"{file}\n"
-            case ".txt":
-                txt = file
-    try:
-        validate_txt_tags(os.path.join(songs_directory, song_folder, txt), tags, "cp1252")
-    except:
-        # Some song files require using the cp1252-Encoding, while other files require using the utf-8-Encoding instead.
-        validate_txt_tags(os.path.join(songs_directory, song_folder, txt), tags, "utf-8")
-
-def rename_song_folder_and_contents(song:str, folder:str, songs_directory:str) -> str:
-    song_directory_contents = os.listdir(songs_directory)
-    song_folder = os.path.join(songs_directory, song)
-
-    # Rename folder to match the song name
-    if song in song_directory_contents:
-        #print(f"Tried to rename but folder already exists! Keeping old names... {desired_path}")
-        song_folder = os.path.join(songs_directory, folder)
-        song = folder
-    elif folder in song_directory_contents:
-        os.rename(os.path.join(songs_directory, folder), song_folder)
-    else:
-        print(f"Could not find directory {os.path.join(songs_directory, folder)}")
-        raise FileNotFoundError
-
-    # Rename all files in the folder to match the song name
-    for file in os.listdir(song_folder):
-        file_ending = os.path.splitext(file)[-1]
-        if os.path.isfile(os.path.join(song_folder, file)):
-            os.rename(os.path.join(song_folder, file), os.path.join(song_folder, f"{song}{file_ending}"))
-        else:
-            print(f"Could not find file {os.path.join(song_folder, file)}")
-            raise FileNotFoundError
-
-    return song_folder
-
-def download_song(song:str, song_folder_path:str, url:str, file_media_type: str, max_video_resolution: str) -> str:
-    yt_opts_mp4 = {
-        'format': f"bestvideo[height<={max_video_resolution}][ext=m4a]+bestaudio[ext=m4a]/best[height<={max_video_resolution}][ext=mp4]/best",
-        'outtmpl': f'{song_folder_path}/{song}.mp4',
-        'quiet': True,
-        'nooverwrites': True,
-    }
-
-    yt_opts_mp3 = {
-        'format': 'bestaudio',
-        'outtmpl': f'{song_folder_path}/{song}',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-        }],
-        'quiet': True,
-        'nooverwrites': True,
-    }
-
-    yt_opts = yt_opts_mp3 if file_media_type == "MP3" else yt_opts_mp4
-    with yt_dlp.YoutubeDL(yt_opts) as ydl:
-        ydl.download([url])
-
-    return song
-
-def remove_duplicates(directory:str, song_list:list[list]) -> list[list]:
-    if not os.path.isdir(directory): return song_list
-    files_in_directory = os.listdir(directory)
-    return [song for song in song_list if song[1] not in files_in_directory]
-
+# Parse the CLI input
 def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     # Input
     parser.add_argument('-i', '--input', action="extend", nargs="+", default=[], help="The path to the directory with all music files to be read")
@@ -143,6 +49,15 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 
     args = parser.parse_args()
 
+    if args.output and not os.path.isdir(args.output):
+        raise_error(f"Output directory {args.output} does not exist.")
+
+    if args.maxVidRes and args.maxVidRes not in ("360", "480", "720", "1080"):
+        raise_error("Invalid maximum video resolution. Valid options are 360, 480, 720 and 1080.")
+
+    if args.filetype and args.filetype not in ("MP3", "MP4"):
+        raise_error("Invalid filetype. Valid options are MP3 and MP4.")
+
     user_args = {}
 
     user_args["input_path"] = args.input
@@ -152,9 +67,7 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     user_args["findAll"] = args.findAll
     if user_args["inputTextfile"]: user_args["findAll"] = True
 
-    input_ways = [user_args["input_path"], user_args["spotify_input"], user_args["inputTextfile"]]
-
-    user_args["output_path"] = args.output or os.getenv("OUTPUT_DIRECTORY")
+    user_args["output_path"] = args.output or os.getenv("OUTPUT_DIRECTORY") or "./output"
     user_args["media_filetype"] = args.filetype
     user_args["maximum_video_resolution"] = args.maxVidRes
 
@@ -164,8 +77,6 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     user_args["user"] = args.user or os.getenv("USDX_USER")
     user_args["password"] = args.password or os.getenv("USDX_PASSWORD")
 
-    if not any(input_ways): raise_error("At least one input is required. Exiting...")
-
     return user_args
 
     # TODO: create user if needed
@@ -174,11 +85,13 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
 def main():
     parser = argparse.ArgumentParser(prog="USDX Song Scraper", description="Scrapes your music files, downloads the USDX text files and according YouTube videos")
 
+    # Load environment variables from .env file
     load_dotenv()
     user_args = parse_cli_input(parser)
 
-    search_list = []
-    
+    Filesystem.ensure_output_directory(output_path=user_args["output_path"])
+
+    # Create sources
     lyric_sources = {
         UsdbAnimuxDe.__class__:UsdbAnimuxDe(user_args),
     }
@@ -188,48 +101,68 @@ def main():
         Directory.__class__:Directory(user_args),
         File.__class__:File(user_args),
     }
-    
+
+    media_sources = {
+        Youtube.__class__:Youtube(user_args),
+    }
+
+    # Go through all the sources and get a list of all songs
+    search_list = []
     for source in song_sources:
         search_list += song_sources[source].get_song_list()
 
+    # Remove duplicate elements in the list.
+    # Happens if the songs are in multiple sources.
     search_list = list(set(search_list))
 
     # Right now we only have one lyrics source, so we can just use that one.
     #todo Later we should add https://usdb.hehoe.de/ and the LyricSources mentioned on there.
-    lyrics_source = lyric_sources[UsdbAnimuxDe.__class__]
+    lyrics_source = next(iter(lyric_sources.values()))
 
     full_search_list = add_switched_search_items(search_list=search_list)
     song_list = lyrics_source.native_search(search_list=full_search_list, find_all_matching=user_args["findAll"])
 
     # Remove songs which are already in the output directory
     #todo shouldn't we remove existing songs *before* the search?
-    song_list = remove_duplicates(directory=user_args["output_path"], song_list=song_list)
+    song_list = Filesystem.remove_duplicates(directory=user_args["output_path"], song_list=song_list)
 
     # Create cookies based on that
     print("Downloading lyrics")
 
     folder_list = lyrics_source.download_all_lyrics(song_list=song_list)
 
+
     # Create Tuple List and delete entries where folder is not set
     song_folder_tuples = [(song, folder) for song, folder in zip(song_list, folder_list) if folder]
 
+    # Right now we only have one media source, so we can just use that one.
+    #todo think about adding more sources. YouTube can't be the only source.
+    media_source = media_sources[Youtube.__class__]
+
     # Download songs
+
+    # Decide on which download method to be used.
+    downloader = media_source.download_mp3
+    if user_args["media_filetype"] == "MP4":
+        downloader = media_source.download_mp4
+
     for count, (song, folder) in enumerate(song_folder_tuples):
         try:
-            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Getting YT URL for song {song[1]}')
-            url = lyrics_source.get_yt_url(song=song[1], id=song[0])
-
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Downloading {song[1]}')
-            song_folder_path = rename_song_folder_and_contents(song=song[1], folder=folder, songs_directory=user_args["output_path"])
-            folder = download_song(song=song[1], song_folder_path=song_folder_path, url=url, file_media_type=user_args["media_filetype"], max_video_resolution=user_args["maximum_video_resolution"])
+            song_folder_path = Filesystem.rename_song_folder_and_contents(
+                song=song[1],
+                folder=folder,
+                songs_directory=user_args["output_path"]
+            )
+
+            folder = downloader(song=song, song_folder_path=song_folder_path, lyrics_source=lyrics_source)
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
-            clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
+            Filesystem.clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
         except Exception as e:
-            print(f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading, skipping and trying to delete shallow folder...")
-            print(f"Detailed Error: {str(e)}")
-            if folder in os.listdir(user_args["output_path"]):
-                shutil.rmtree(os.path.join(user_args["output_path"], folder))
+            ColorPrint.print(ColorPrint.FAIL, f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading. Skipping...")
+            ColorPrint.print(ColorPrint.FAIL, f"Detailed Error: {str(e)}")
+
 
     print("Finished")
 

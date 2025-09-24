@@ -4,7 +4,6 @@ import requests, zipfile, io, os, re
 from requests.adapters import HTTPAdapter, Retry
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
-from youtubesearchpython import VideosSearch
 from math import ceil, floor
 
 from .LyricsSourceBase import LyricsSourceBase
@@ -173,39 +172,6 @@ class UsdbAnimuxDe(LyricsSourceBase):
             'start': start
         }
 
-    # Get all YouTube URLs: Either from the entry at SONG_URL or via YouTube search
-    def get_yt_url(self, song: str, id: str) -> str:
-        with requests.Session() as session:
-            retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
-            session.mount('https://', HTTPAdapter(max_retries=retries))
-
-            # Try to find if there a link to a YT video on the songs http://usdb.animux.de/ page
-            r = session.get(self.SONG_URL + id)
-            if not r.ok: raise Exception("GET failed")
-
-        song_soup = BeautifulSoup(r.text, 'html5lib')
-
-        yt_pattern = re.compile(r'youtu')
-        a_tag = song_soup.find("a", href=yt_pattern)
-        iframe = song_soup.find("iframe", src=yt_pattern)
-
-        if iframe:
-            # Get YT Video ID from embedded link and construct video url
-            embed_link = iframe.get("src")
-            video_id = embed_link.split("/")[-1]
-            return f"https://www.youtube.com/watch?v={video_id}"
-        elif a_tag:
-            # If a_tag to vt video is set, use this
-            return a_tag.get("href")
-        else:
-            # Search for videos on YT and add links to song_list
-            search_key = re.sub(
-                r"\s*\([Dd][Uu][Ee][Tt]\)\s*|\s*\[[Dd][Uu][Ee][Tt]\]\s*|\s*\{[Dd][Uu][Ee][Tt]\}\s*|\s*[Dd][Uu][Ee][Tt]\s*",
-                "", song)
-            print(f"Searching for: {search_key} Music Video")
-            videos_search = VideosSearch(f'{search_key} Music Video', limit=1)
-            return videos_search.result()["result"][0]["link"]
-
     # Create personal download URL for http://usdb.animux.de/
     def create_personal_download_url(self, user:str) -> str:
         zip_name = f"{user.lower()}-playlist.zip?t={floor(time.time())}"
@@ -230,3 +196,6 @@ class UsdbAnimuxDe(LyricsSourceBase):
             'pass': password,
             'login': 'Login'
         }
+
+    def get_song_url(self, song_id):
+        return self.SONG_URL + song_id

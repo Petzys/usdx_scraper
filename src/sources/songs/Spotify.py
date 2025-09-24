@@ -11,7 +11,7 @@ class Spotify(SongsSourceBase):
 
     CLIENT_ID = ""
     CLIENT_SECRET = ""
-    PLAYLIST_ID = ""
+    PLAYLIST_ID = []
 
     def __init__(self, user_args):
         self.CLIENT_ID = user_args["spotify_id"] or os.getenv("SPOTIPY_CLIENT_ID")

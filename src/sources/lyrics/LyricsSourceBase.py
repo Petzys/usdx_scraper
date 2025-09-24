@@ -1,8 +1,6 @@
 import os
 import sys
 
-import requests
-
 from src.sources.SongSearchItem import SongSearchItem
 
 
@@ -27,9 +25,6 @@ class LyricsSourceBase:
 
     def create_login_payload(self, user: str, password: str) -> dict[str, str]:
         return {}
-
-    def get_yt_url(self, song: str, id: str) -> str:
-        return ""
 
     # Create the payload to login on http://usdb.animux.de/ with the user data
     def create_search_payload(self, interpret: str = "", title: str = "", edition: str = "", language: str = "",
@@ -73,4 +68,7 @@ class LyricsSourceBase:
 
     def download_lyrics(self, cookie: str, download_url: str, directory: str) -> str:
         return ""
+
+    def get_song_url(self, song_id):
+        pass
 
