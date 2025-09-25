@@ -74,6 +74,7 @@ class Filesystem:
         except:
             # Some song files require using the cp1252-Encoding, while other files require using the utf-8-Encoding instead.
             Filesystem.validate_txt_tags(os.path.join(songs_directory, song_folder, txt), tags, "utf-8")
+
     @staticmethod
     def remove_duplicates(directory:str, song_list:list[list]) -> list[list]:
         if not os.path.isdir(directory): return song_list

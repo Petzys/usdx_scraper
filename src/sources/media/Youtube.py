@@ -10,7 +10,7 @@ from src.sources.media.MediaSourceBase import MediaSourceBase
 
 class Youtube(MediaSourceBase):
 
-    maximum_video_resolution = "1080"
+    maximum_video_resolution = "480"
 
     def __init__(self, user_args):
         self.maximum_video_resolution = user_args["maximum_video_resolution"] or os.getenv("MAX_VIDEO_RESOLUTION") or self.maximum_video_resolution

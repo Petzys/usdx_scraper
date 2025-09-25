@@ -68,7 +68,7 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     if user_args["inputTextfile"]: user_args["findAll"] = True
 
     user_args["output_path"] = args.output or os.getenv("OUTPUT_DIRECTORY") or "./output"
-    user_args["media_filetype"] = args.filetype
+    user_args["media_filetype"] = args.filetype or os.getenv("MEDIA_FILETYPE") or "MP3"
     user_args["maximum_video_resolution"] = args.maxVidRes
 
     user_args["spotify_id"] = args.spotifyClientId
@@ -130,7 +130,6 @@ def main():
     print("Downloading lyrics")
 
     folder_list = lyrics_source.download_all_lyrics(song_list=song_list)
-
 
     # Create Tuple List and delete entries where folder is not set
     song_folder_tuples = [(song, folder) for song, folder in zip(song_list, folder_list) if folder]
