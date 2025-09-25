@@ -73,13 +73,22 @@ class UsdbAnimuxDe(LyricsSourceBase):
         search_soup = BeautifulSoup(response.text, 'html5lib')
 
         # Check for next pages
-        #string_regex = re.compile(r'There\s*are\s*\d{0,9999}\s*results\s*on\s*\d{0,9999}\s*page')
-        string_regex = re.compile(r'Es gibt  \d+  Resultate auf  \d+ Seite\(n\)')
-        counter_string = search_soup.find(string=string_regex)
-        print(f"Found counter String: {counter_string}")
+        results_strings = [
+            r'There\s*are\s*\d+\s*results\s*on\s*\d+\s*page',
+            r'Es gibt\s+\d+\s+Resultate auf\s+\d+ Seite\(n\)'
+        ]
+        # Look for the string in different languages, take the first one found.
+        counter = 0
+        for regex in results_strings:
+            string_regex = re.compile(regex)
+            counter_string = search_soup.find(string=string_regex)
+            if counter_string is None:
+                continue
 
-        counter = int(re.search(r'\d+', counter_string).group(0))
-        print(f"Found counter: {counter}")
+            counter = int(re.search(r'\d+', counter_string).group(0))
+            if counter > 0:
+                print(f"Found counter: {counter}")
+                break
 
         no_of_pages = ceil(counter / 100)
         # print(f"No of Pages: {no_of_pages}")
