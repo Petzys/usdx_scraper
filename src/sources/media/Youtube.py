@@ -64,6 +64,7 @@ class Youtube(MediaSourceBase):
             }],
             'quiet': True,
             'nooverwrites': True,
+            'no_warnings': True,
         }
         url = self.get_yt_url(song=song[1], song_id=song[0], lyrics_source=lyrics_source)
 
@@ -77,6 +78,7 @@ class Youtube(MediaSourceBase):
             'outtmpl': f'{song_folder_path}/{song[1]}.mp4',
             'quiet': True,
             'nooverwrites': True,
+            'no_warnings': True,
         }
         url = self.get_yt_url(song=song[1], song_id=song[0],lyrics_source=lyrics_source)
 
