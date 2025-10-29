@@ -2,8 +2,10 @@ FROM python:alpine3.16
 
 WORKDIR /usr/src/app
 
+RUN apk add --no-cache ffmpeg
 COPY usdx_scraper.py .
 COPY requirements.txt .
+COPY src/ src/
 
 RUN pip install --no-cache-dir -r requirements.txt
 
