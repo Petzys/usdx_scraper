@@ -1,5 +1,7 @@
-spotipy==2.22.1
-beautifulsoup4==4.11.1
+requests
+python-dotenv
+spotipy==2.25.1
+beautifulsoup4==4.13.5
 youtube-search-python==1.6.6
-yt-dlp==2025.3.31
+yt-dlp
 html5lib==1.1

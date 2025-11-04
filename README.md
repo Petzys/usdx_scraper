@@ -21,6 +21,20 @@ Also available on Docker Hub: https://hub.docker.com/r/mrpetzi/usdx_scraper
 
 The scraper heavily relies on https://usdb.hehoe.de/ and http://usdb.animux.de/ to work. Might optimize this in the future.
 
+## ENV File
+You can copy the `.env.example` file to `.env` and fill in the required parameters:
+- OUTPUT_DIRECTORY
+- INPUT_FILE_PATH
+- INPUT_DIRECTORY_PATH
+- USDX_USER
+- USDX_PASSWORD
+- SPOTIPY_CLIENT_ID
+- SPOTIPY_CLIENT_SECRET
+- SPOTIPY_PLAYLIST_ID  
+- MAX_VIDEO_RESOLUTION=480
+- MEDIA_FILETYPE=MP3
+
+
 ```
 usage: USDX Song Scraper [-h] [-i INPUT [INPUT ...]] [-s SPOTIFY [SPOTIFY ...]] [-it INPUTTEXTFILE [INPUTTEXTFILE ...]] [-fa] [-o OUTPUT] [-sid SPOTIFYCLIENTID] [-ssc SPOTIFYCLIENTSECRET] [-u USER] [-p PASSWORD]
 
@@ -48,4 +62,15 @@ options:
   -u USER, --user USER  The user to use on http://usdb.animux.de/, required
   -p PASSWORD, --password PASSWORD
                         The password for the user, required
+```
+
+## Run directly using Docker
+Using command line arguments:
+```bash
+docker run -v ${PWD}/data:/data -v ${PWD}/.env:/usr/src/app/.env -it mrpetzi/usdx_scraper -it "/data/input.txt" -o "/data/out" -u $USERNAME -p $PASSWORD
+```
+
+Using `.env` file:
+```bash
+docker run -v ${PWD}/data:/data -v ${PWD}/.env:/usr/src/app/.env -it mrpetzi/usdx_scraper
 ```
