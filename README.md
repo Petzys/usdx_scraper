@@ -63,3 +63,14 @@ options:
   -p PASSWORD, --password PASSWORD
                         The password for the user, required
 ```
+
+## Run directly using Docker
+Using command line arguments:
+```bash
+docker run -v ${PWD}/data:/data -v ${PWD}/.env:/usr/src/app/.env -it mrpetzi/usdx_scraper -it "/data/input.txt" -o "/data/out" -u $USERNAME -p $PASSWORD
+```
+
+Using `.env` file:
+```bash
+docker run -v ${PWD}/data:/data -v ${PWD}/.env:/usr/src/app/.env -it mrpetzi/usdx_scraper
+```
