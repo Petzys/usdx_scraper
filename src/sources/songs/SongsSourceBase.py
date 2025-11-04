@@ -1,9 +1,9 @@
 import sys
-
+from abc import ABCMeta, abstractmethod
 from src.sources.SongSearchItem import SongSearchItem
 
 
-class SongsSourceBase:
+class SongsSourceBase(metaclass=ABCMeta):
     # All words to ignore in file names
     ignored_words = ['Official', 'Video', 'ft', 'feat', 'Music', 'Lyrics', 'the', 'stereo', 'mono', 'instrumental',
                      'cover', 'Lyric', 'Remix', '_', 'Audio',
@@ -20,6 +20,7 @@ class SongsSourceBase:
         print(err_massage)
         sys.exit(1)
 
+    @abstractmethod
     def get_song_list(self) -> list[str]:
         return []
 

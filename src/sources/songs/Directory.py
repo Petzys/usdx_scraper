@@ -21,13 +21,13 @@ class Directory(SongsSourceBase):
         for source_directory in self.INPUT_PATH:
             # Get songs from SONG_SOURCE_DIRECTORY and clean those songs from unwanted words and characters
             search_list += self.clean_search_list(
-                self.parse_songs_from_directory(directory=source_directory, filetypes=self.song_file_types))
+                self._parse_songs_from_directory(directory=source_directory, filetypes=self.song_file_types))
 
         return search_list
 
     # Parses the SONG_SOURCE_DIRECTORY for songs with filetype from SONG_SOURCE_DIRECTORY
     @staticmethod
-    def parse_songs_from_directory(directory: str, filetypes: list) -> list[SongSearchItem]:
+    def _parse_songs_from_directory(directory: str, filetypes: list) -> list[SongSearchItem]:
         # Create list with all song names and check for correct file types
         # The encoding and decoding is done to prevent an error
         parsed_songs = [os.path.splitext(file)[0].encode("utf-8").decode('utf-8', 'ignore') for file in

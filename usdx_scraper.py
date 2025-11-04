@@ -92,7 +92,7 @@ def main():
     Filesystem.ensure_output_directory(output_path=user_args["output_path"])
 
     # Create sources
-    lyric_sources = {
+    lyrics_sources = {
         UsdbAnimuxDe.__class__:UsdbAnimuxDe(user_args),
     }
 
@@ -103,7 +103,7 @@ def main():
     }
 
     media_sources = {
-        Youtube.__class__:Youtube(user_args),
+        Youtube.__class__:Youtube(user_args, lyrics_source=lyrics_sources[UsdbAnimuxDe.__class__]), # TODO Change so we can have multiple lyrics sources
     }
 
     # Go through all the sources and get a list of all songs
@@ -117,7 +117,7 @@ def main():
 
     # Right now we only have one lyrics source, so we can just use that one.
     #todo Later we should add https://usdb.hehoe.de/ and the LyricSources mentioned on there.
-    lyrics_source = next(iter(lyric_sources.values()))
+    lyrics_source = next(iter(lyrics_sources.values()))
 
     full_search_list = add_switched_search_items(search_list=search_list)
     song_list = lyrics_source.native_search(search_list=full_search_list, find_all_matching=user_args["findAll"])
@@ -141,9 +141,12 @@ def main():
     # Download songs
 
     # Decide on which download method to be used.
-    downloader = media_source.download_mp3
-    if user_args["media_filetype"] == "MP4":
-        downloader = media_source.download_mp4
+    if user_args["media_filetype"] == "MP3":
+        downloader = media_source.download_audio
+    elif user_args["media_filetype"] == "MP4":
+        downloader = media_source.download_video
+    else:
+        raise ValueError("Invalid media_filetype")
 
     for count, (song, folder) in enumerate(song_folder_tuples):
         try:
@@ -154,7 +157,7 @@ def main():
                 songs_directory=user_args["output_path"]
             )
 
-            folder = downloader(song=song, song_folder_path=song_folder_path, lyrics_source=lyrics_source)
+            folder = downloader(song=song, song_folder_path=song_folder_path)
 
             print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
             Filesystem.clean_tags(songs_directory=user_args["output_path"], song_folder=folder)

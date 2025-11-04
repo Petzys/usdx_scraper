@@ -23,10 +23,8 @@ class Spotify(SongsSourceBase):
 
         super().__init__()
 
-
-
     def get_song_list(self) -> list[str]:
-        playlist_tracks = self.get_all_tracks()
+        playlist_tracks = self._get_all_tracks()
         search_list = []
         for track in playlist_tracks:
             track = track["track"]
@@ -39,7 +37,7 @@ class Spotify(SongsSourceBase):
         return search_list
 
 
-    def get_all_tracks(self):
+    def _get_all_tracks(self):
         auth_manager = SpotifyClientCredentials(self.CLIENT_ID, self.CLIENT_SECRET)
         spotify_client = spotipy.Spotify(auth_manager=auth_manager)
         playlist_identifier = self.PLAYLIST_ID
