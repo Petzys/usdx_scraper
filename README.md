@@ -67,10 +67,10 @@ options:
 ## Run directly using Docker
 Using command line arguments:
 ```bash
-docker run -v ${PWD}/data:/data -v ${PWD}/.env:/usr/src/app/.env -it mrpetzi/usdx_scraper -it "/data/input.txt" -o "/data/out" -u $USERNAME -p $PASSWORD
+docker run -v ${PWD}/data:/data -v ${PWD}/.env:/usr/src/app/.env -it ghcr.io/petzys/usdx_scraper:master -it "/data/input.txt" -o "/data/out" -u $USERNAME -p $PASSWORD
 ```
 
 Using `.env` file:
 ```bash
-docker run -v ${PWD}/data:/data -v ${PWD}/.env:/usr/src/app/.env -it mrpetzi/usdx_scraper
+docker run -v ${PWD}/data:/data -v ${PWD}/.env:/usr/src/app/.env -it ghcr.io/petzys/usdx_scraper:master
 ```
