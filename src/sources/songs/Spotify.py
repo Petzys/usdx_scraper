@@ -21,7 +21,12 @@ class Spotify(SongsSourceBase):
         if self.PLAYLIST_ID and not (self.CLIENT_ID and self.CLIENT_SECRET): self.raise_error(
             "Client ID and secret are required if a Spotify playlist is specified")
 
-        super().__init__()
+        super().__init__(user_args)
+
+    @staticmethod
+    def is_applicable(user_args: dict) -> bool:
+        return bool(user_args.get("spotify_input") or os.getenv("SPOTIPY_PLAYLIST_ID"))
+        
 
     def get_song_list(self) -> list[str]:
         playlist_tracks = self._get_all_tracks()
@@ -54,6 +59,9 @@ class Spotify(SongsSourceBase):
                 offset=offset,
                 limit=limit
             )
+            if playlist is None:
+                break
+            
             items = playlist["items"]
 
             if not items:

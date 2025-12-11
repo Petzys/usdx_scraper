@@ -15,6 +15,10 @@ class SongsSourceBase(metaclass=ABCMeta):
                      "Duett"]
     ignored_pattern = "|".join(ignored_words)
 
+    @abstractmethod
+    def __init__(self, user_args: dict):
+        pass
+
     @staticmethod
     def raise_error(err_massage: str):
         print(err_massage)
@@ -23,6 +27,12 @@ class SongsSourceBase(metaclass=ABCMeta):
     @abstractmethod
     def get_song_list(self) -> list[str]:
         return []
+    
+    # Try to construct the source from the given user arguments, return None if not possible
+    @staticmethod
+    @abstractmethod
+    def is_applicable(user_args: dict) -> bool:
+        return False
 
     # Strip all entries of the search list from unwanted additions from the ignored_words
     def clean_search_list(self, search_list: list[SongSearchItem]) -> list[SongSearchItem]:

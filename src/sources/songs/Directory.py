@@ -11,10 +11,19 @@ class Directory(SongsSourceBase):
     INPUT_PATH = []
 
     def __init__(self, user_args):
-        self.INPUT_PATH = user_args["input_path"] or os.getenv("INPUT_DIRECTORY_PATH") or self.INPUT_PATH
+        if user_args.get("input_path"):
+            self.INPUT_PATH += user_args["input_path"]
+        if os.getenv("INPUT_DIRECTORY_PATH"):
+            self.INPUT_PATH.append(os.getenv("INPUT_DIRECTORY_PATH"))
 
         if self.INPUT_PATH and not all([os.path.isdir(input_dir)] for input_dir in self.INPUT_PATH):
             self.raise_error(f'{self.INPUT_PATH} is not a valid directory. Exiting...')
+
+        super().__init__(user_args)
+
+    @staticmethod
+    def is_applicable(user_args: dict) -> bool:
+        return bool(user_args.get("input_path") or os.getenv("INPUT_DIRECTORY_PATH"))
 
     def get_song_list(self) -> list[str]:
         search_list = []

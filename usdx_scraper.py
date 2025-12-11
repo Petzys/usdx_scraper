@@ -7,6 +7,7 @@ from src.sources.Filesystem import Filesystem
 from src.sources.SongSearchItem import SongSearchItem
 from src.sources.lyrics.UsdbAnimuxDe import UsdbAnimuxDe
 from src.sources.media.Youtube import Youtube
+from src.sources.songs.SongsSourceBase import SongsSourceBase
 from src.sources.songs.Directory import Directory
 from src.sources.songs.File import File
 from src.sources.songs.Spotify import Spotify
@@ -96,20 +97,21 @@ def main():
         UsdbAnimuxDe.__class__:UsdbAnimuxDe(user_args),
     }
 
-    song_sources = {
-        Spotify.__class__:Spotify(user_args),
-        Directory.__class__:Directory(user_args),
-        File.__class__:File(user_args),
-    }
+    song_sources = []
+    available_song_source_classes: list[type[SongsSourceBase]] = [Spotify, Directory, File]
+    for source_class in available_song_source_classes:
+        if source_class.is_applicable(user_args):
+            song_sources.append(source_class(user_args))
 
     media_sources = {
-        Youtube.__class__:Youtube(user_args, lyrics_source=lyrics_sources[UsdbAnimuxDe.__class__]), # TODO Change so we can have multiple lyrics sources
+        "Youtube":Youtube(user_args, lyrics_source=lyrics_sources[UsdbAnimuxDe.__class__]), # TODO Change so we can have multiple lyrics sources
     }
 
     # Go through all the sources and get a list of all songs
     search_list = []
     for source in song_sources:
-        search_list += song_sources[source].get_song_list()
+        print(f"Getting songs from source: {source.__class__.__name__}")
+        search_list += source.get_song_list()
 
     # Remove duplicate elements in the list.
     # Happens if the songs are in multiple sources.
@@ -136,7 +138,7 @@ def main():
 
     # Right now we only have one media source, so we can just use that one.
     #todo think about adding more sources. YouTube can't be the only source.
-    media_source = media_sources[Youtube.__class__]
+    media_source = media_sources["Youtube"]
 
     # Download songs
 

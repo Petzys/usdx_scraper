@@ -73,7 +73,7 @@ class UsdbAnimuxDe(LyricsSourceBase):
 
             counter = int(re.search(r'\d+', counter_string).group(0))
             if counter > 0:
-                print(f"Found counter: {counter}")
+                # print(f"Found counter: {counter}")
                 break
 
         no_of_pages = ceil(counter / 100)

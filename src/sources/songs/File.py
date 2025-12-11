@@ -8,7 +8,19 @@ class File(SongsSourceBase):
 
     INPUT_FILE = []
     def __init__(self, user_args):
-        self.INPUT_FILE = user_args["inputTextfile"] or [os.getenv("INPUT_FILE_PATH")] or self.INPUT_FILE
+        if user_args.get("inputTextfile"):
+            self.INPUT_FILE += user_args["inputTextfile"]
+        if os.getenv("INPUT_FILE_PATH"):
+            self.INPUT_FILE.append(os.getenv("INPUT_FILE_PATH"))
+
+        if self.INPUT_FILE and not all([os.path.isfile(input_file)] for input_file in self.INPUT_FILE):
+            self.raise_error(f'{self.INPUT_FILE} is not a valid file. Exiting...')
+
+        super().__init__(user_args)
+
+    @staticmethod
+    def is_applicable(user_args: dict) -> bool:
+        return bool(user_args.get("inputTextfile") or os.getenv("INPUT_FILE_PATH"))
 
     def get_song_list(self) -> list[str]:
         search_list = []
