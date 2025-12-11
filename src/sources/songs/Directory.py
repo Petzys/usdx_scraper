@@ -2,6 +2,7 @@ import os
 
 from src.sources.SongSearchItem import SongSearchItem
 from src.sources.songs.SongsSourceBase import SongsSourceBase
+import mutagen
 
 
 class Directory(SongsSourceBase):
@@ -37,13 +38,30 @@ class Directory(SongsSourceBase):
     # Parses the SONG_SOURCE_DIRECTORY for songs with filetype from SONG_SOURCE_DIRECTORY
     @staticmethod
     def _parse_songs_from_directory(directory: str, filetypes: list) -> list[SongSearchItem]:
+        songs = []
+
+        # Check any songs that have the song name and artist set in metadata tags
+        remaining_files = []
+        for file in os.listdir(directory):
+            if not os.path.isfile(os.path.join(directory, file)):
+                continue
+            if os.path.splitext(file)[1] in filetypes:
+                audio = mutagen.File(os.path.join(directory, file), easy=True)
+                if audio is not None:
+                    title = audio.get('title', [None])[0]
+                    artist = audio.get('artist', [None])[0]
+                    if title and artist:
+                        songs.append(SongSearchItem(name_tag=(title,), artist_tag=(artist,)))
+                    else:
+                        remaining_files.append(file)
+
         # Create list with all song names and check for correct file types
         # The encoding and decoding is done to prevent an error
         parsed_songs = [os.path.splitext(file)[0].encode("utf-8").decode('utf-8', 'ignore') for file in
-                        os.listdir(directory) if os.path.splitext(file)[1] in filetypes]
+                        remaining_files if os.path.splitext(file)[1] in filetypes]
 
-        parsed_objects = [SongSearchItem(name_tag=song) for song in parsed_songs]
+        songs += [SongSearchItem(name_tag=song) for song in parsed_songs]
 
         print(f"Successfully parsed all songs from {directory}")
 
-        return parsed_objects
+        return songs
