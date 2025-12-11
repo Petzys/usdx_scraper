@@ -38,6 +38,10 @@ class SongSearchItem:
             [re.sub(r'^\s+|\s+$', '', tag) for tag in self.name_tag_tuple if not re.match(r"^[ 0-9]+$", tag)])
         self.artist_tag_tuple = tuple(
             [re.sub(r'^\s+|\s+$', '', tag) for tag in self.artist_tag_tuple if not re.match(r"^[ 0-9]+$", tag)])
+        
+        # Remove empty tags
+        self.name_tag_tuple = tuple([tag for tag in self.name_tag_tuple if tag])
+        self.artist_tag_tuple = tuple([tag for tag in self.artist_tag_tuple if tag])
 
     def try_separate(self):
         # Abort if more than one item in name_tag_set
