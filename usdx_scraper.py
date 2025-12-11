@@ -12,6 +12,8 @@ from src.sources.songs.Directory import Directory
 from src.sources.songs.File import File
 from src.sources.songs.Spotify import Spotify
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 def raise_error(err_massage:str):
     ColorPrint.print(ColorPrint.FAIL, err_massage)
@@ -149,28 +151,34 @@ def main():
         downloader = media_source.download_video
     else:
         raise ValueError("Invalid media_filetype")
+    
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(download_worker, song, folder, user_args, downloader) for song, folder in song_folder_tuples]
 
-    for count, (song, folder) in enumerate(song_folder_tuples):
-        try:
-            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d} = {(count + 1) / len(song_folder_tuples) * 100:.2f}%] Downloading Songs', end="\r")
-            song_folder_path = Filesystem.rename_song_folder_and_contents(
-                song=song[1],
-                folder=folder,
-                songs_directory=user_args["output_path"]
-            )
-
-            folder = downloader(song=song, song_folder_path=song_folder_path)
-
-            # print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
-            Filesystem.clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
-        except Exception as e:
-            ColorPrint.print(ColorPrint.FAIL, f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading. Skipping...")
-            ColorPrint.print(ColorPrint.FAIL, f"Detailed Error: {str(e)}")
-
+        for count, future in enumerate(as_completed(futures)):
+            try:
+                print(f'[{(count+1):04d}/{len(song_folder_tuples):04d} = {(count + 1) / len(song_folder_tuples) * 100:.2f}%] Downloading Songs', end="\r")
+                future.result()
+            except Exception as e:
+                ColorPrint.print(ColorPrint.FAIL, f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading. Skipping...")
+                ColorPrint.print(ColorPrint.FAIL, f"Detailed Error: {str(e)}")
+    print() # New line after progress
 
     print("Finished")
 
     return
+
+def download_worker(song, folder, user_args, downloader):
+    song_folder_path = Filesystem.rename_song_folder_and_contents(
+        song=song[1],
+        folder=folder,
+        songs_directory=user_args["output_path"]
+    )
+
+    folder = downloader(song=song, song_folder_path=song_folder_path)
+
+    # print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
+    Filesystem.clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
 
 if __name__ == "__main__":
     main()

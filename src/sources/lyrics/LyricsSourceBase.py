@@ -29,9 +29,9 @@ class LyricsSourceBase(metaclass=ABCMeta):
         song_list = []
 
         with ThreadPoolExecutor() as executor:
-            search_results = [executor.submit(self._execute_search_for_search_item, search_item) for search_item in search_list]
+            futures = [executor.submit(self._execute_search_for_search_item, search_item) for search_item in search_list]
 
-            for count, future in enumerate(as_completed(search_results)):
+            for count, future in enumerate(as_completed(futures)):
                 search_result = future.result()
                 # Print progress
                 print(f"[{count + 1}/{len(search_list)} = {(count + 1) / len(search_list) * 100:.2f}%] Searching for lyrics", end="\r")
@@ -42,6 +42,7 @@ class LyricsSourceBase(metaclass=ABCMeta):
                 if not find_all_matching:
                     search_list.pop(count)
 
+        print() # New line after progress printing
         return song_list
 
     # Create the payload to login on http://usdb.animux.de/ with the user data

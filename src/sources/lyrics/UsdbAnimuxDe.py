@@ -148,6 +148,7 @@ class UsdbAnimuxDe(LyricsSourceBase):
                     f"[{(count + 1):04d}/{len(cookie_list):04d}] Error while downloading .txt files, skipping {cookie[:-1]}...")
                 folder_list.append(None)
 
+        print()  # New line after progress printing
         return folder_list
 
     # Create the payload to login on http://usdb.animux.de/ with the user data
