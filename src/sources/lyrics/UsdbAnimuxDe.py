@@ -99,7 +99,7 @@ class UsdbAnimuxDe(LyricsSourceBase):
                 title = a_tag.contents[0]
                 artist = tag.find("td").contents[0]
 
-                print(f"Found match: {search_string_representation} -> {artist} - {title}")
+                # print(f"Found match: {search_string_representation} -> {artist} - {title}")
                 search_results.append([id, f"{artist} - {title}"])
 
         return search_results

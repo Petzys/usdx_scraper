@@ -152,7 +152,7 @@ def main():
 
     for count, (song, folder) in enumerate(song_folder_tuples):
         try:
-            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Downloading {song[1]}')
+            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d} = {(count + 1) / len(song_folder_tuples) * 100:.2f}%] Downloading Songs', end="\r")
             song_folder_path = Filesystem.rename_song_folder_and_contents(
                 song=song[1],
                 folder=folder,
@@ -161,7 +161,7 @@ def main():
 
             folder = downloader(song=song, song_folder_path=song_folder_path)
 
-            print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
+            # print(f'[{(count+1):04d}/{len(song_folder_tuples):04d}] Cleaning up filenames and references in {folder}')
             Filesystem.clean_tags(songs_directory=user_args["output_path"], song_folder=folder)
         except Exception as e:
             ColorPrint.print(ColorPrint.FAIL, f"[{(count+1):04d}/{len(song_folder_tuples):04d}] Error while getting stream or downloading. Skipping...")

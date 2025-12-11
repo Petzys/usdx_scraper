@@ -67,6 +67,6 @@ class Youtube(MediaSourceBase):
         search_key = re.sub(
             r"\s*\([Dd][Uu][Ee][Tt]\)\s*|\s*\[[Dd][Uu][Ee][Tt]\]\s*|\s*\{[Dd][Uu][Ee][Tt]\}\s*|\s*[Dd][Uu][Ee][Tt]\s*",
             "", song)
-        print(f"Searching for: {search_key} Music Video")
+        # print(f"Searching for: {search_key} Music Video")
         videos_search = VideosSearch(f'{search_key} Music Video', limit=1)
         return videos_search.result()["result"][0]["link"]

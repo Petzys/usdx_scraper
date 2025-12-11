@@ -27,6 +27,8 @@ class LyricsSourceBase(metaclass=ABCMeta):
         song_list = []
 
         for count, search_item in enumerate(search_list):
+            # Print progress
+            print(f"[{count + 1}/{len(search_list)} = {(count + 1) / len(search_list) * 100:.2f}%] Searching for lyrics", end="\r")
             search_result = self._execute_search_for_search_item(search_item=search_item)
             if not search_result: continue
 
@@ -67,7 +69,7 @@ class LyricsSourceBase(metaclass=ABCMeta):
 
         has_multiple_artists = len(search_item.artist_tag_tuple) > 1
         if has_multiple_artists:
-            print(f"Could not find any results for {search_item}. Retrying with artists separated")
+            # print(f"Could not find any results for {search_item}. Retrying with artists separated")
 
             for artist in search_item.artist_tag_tuple:
                 search_results = self._execute_search(artist_string=artist, title_string=title_string)
