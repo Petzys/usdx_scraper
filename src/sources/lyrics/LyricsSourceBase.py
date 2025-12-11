@@ -1,7 +1,9 @@
 import os
 import sys
 from abc import ABCMeta, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 
+from concurrent.futures import as_completed
 from src.sources.SongSearchItem import SongSearchItem
 
 
@@ -26,16 +28,19 @@ class LyricsSourceBase(metaclass=ABCMeta):
     def native_search(self, search_list: list, find_all_matching: bool) -> list[list]:
         song_list = []
 
-        for count, search_item in enumerate(search_list):
-            # Print progress
-            print(f"[{count + 1}/{len(search_list)} = {(count + 1) / len(search_list) * 100:.2f}%] Searching for lyrics", end="\r")
-            search_result = self._execute_search_for_search_item(search_item=search_item)
-            if not search_result: continue
+        with ThreadPoolExecutor() as executor:
+            search_results = [executor.submit(self._execute_search_for_search_item, search_item) for search_item in search_list]
 
-            song_list += search_result
+            for count, future in enumerate(as_completed(search_results)):
+                search_result = future.result()
+                # Print progress
+                print(f"[{count + 1}/{len(search_list)} = {(count + 1) / len(search_list) * 100:.2f}%] Searching for lyrics", end="\r")
+                if not search_result: continue
 
-            if not find_all_matching:
-                search_list.pop(count)
+                song_list += search_result
+
+                if not find_all_matching:
+                    search_list.pop(count)
 
         return song_list
 

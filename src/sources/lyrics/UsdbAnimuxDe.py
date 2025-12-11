@@ -99,7 +99,7 @@ class UsdbAnimuxDe(LyricsSourceBase):
                 title = a_tag.contents[0]
                 artist = tag.find("td").contents[0]
 
-                # print(f"Found match: {search_string_representation} -> {artist} - {title}")
+                print(f"Found match: {search_string_representation} -> {artist} - {title}")
                 search_results.append([id, f"{artist} - {title}"])
 
         return search_results
@@ -134,7 +134,7 @@ class UsdbAnimuxDe(LyricsSourceBase):
 
         # Run function for each cookie in cookie_list
         for count, cookie in enumerate(cookie_list):
-            print(f"[{(count + 1):04d}/{len(cookie_list):04d}] Downloading .txt files with cookie = {cookie[:-1]}")
+            print(f"[{(count + 1):04d}/{len(cookie_list):04d} = {(count + 1) / len(cookie_list) * 100:.2f}%] Downloading .txt files", end="\r")
             # Download txt files with cookie
             try:
                 folder = self._download_lyrics(cookie, download_url, self.OUTPUT_DIRECTORY)
