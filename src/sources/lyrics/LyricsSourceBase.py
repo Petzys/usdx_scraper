@@ -25,7 +25,7 @@ class LyricsSourceBase(metaclass=ABCMeta):
     def download_all_lyrics(self, song_list: list) -> list[str]:
         pass
     
-    def native_search(self, search_list: list, find_all_matching: bool) -> list[list]:
+    def native_search(self, search_list: list) -> list[list]:
         song_list = []
 
         with ThreadPoolExecutor() as executor:
@@ -38,9 +38,6 @@ class LyricsSourceBase(metaclass=ABCMeta):
                 if not search_result: continue
 
                 song_list += search_result
-
-                if not find_all_matching:
-                    search_list.pop(count)
 
         print() # New line after progress printing
         return song_list

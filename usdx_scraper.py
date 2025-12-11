@@ -33,9 +33,7 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     # Input
     parser.add_argument('-i', '--input', action="extend", nargs="+", default=[], help="The path to the directory with all music files to be read")
     parser.add_argument('-s', '--spotify', action="extend", nargs="+", default=[], help="The URL/URI or ID of a Spotify playlist to search for songs, requires client_id and client_secret")
-    parser.add_argument('-it', '--inputTextfile', action="extend", nargs="+", default=[], help="The paths to textfile which contain songs to search for; will enable findAll")
-
-    parser.add_argument('-fa', '--findAll', action="store_true", help="Set to search for ALL songs matching the inputs. Otherwise the parser will try to find exactly one song per search entry")
+    parser.add_argument('-it', '--inputTextfile', action="extend", nargs="+", default=[], help="The paths to textfile which contain songs to search for")
 
     # Output
     parser.add_argument("-o", "--output", action="store", default="", help="The output directory where all songs and their text files should be saved")
@@ -66,9 +64,6 @@ def parse_cli_input(parser: argparse.ArgumentParser) -> dict:
     user_args["input_path"] = args.input
     user_args["spotify_input"] = args.spotify
     user_args["inputTextfile"] = args.inputTextfile
-
-    user_args["findAll"] = args.findAll
-    if user_args["inputTextfile"]: user_args["findAll"] = True
 
     user_args["output_path"] = args.output or os.getenv("OUTPUT_DIRECTORY") or "./output"
     user_args["media_filetype"] = args.filetype or os.getenv("MEDIA_FILETYPE") or "MP3"
@@ -124,7 +119,7 @@ def main():
     lyrics_source = next(iter(lyrics_sources.values()))
 
     full_search_list = add_switched_search_items(search_list=search_list)
-    song_list = lyrics_source.native_search(search_list=full_search_list, find_all_matching=user_args["findAll"])
+    song_list = lyrics_source.native_search(search_list=full_search_list)
 
     # Remove songs which are already in the output directory
     #todo shouldn't we remove existing songs *before* the search?
