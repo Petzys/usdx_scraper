@@ -1,14 +1,16 @@
 import os
 
 from src.sources.ColorPrint import ColorPrint
-from src.sources.SongSearchItem import SongSearchItem
 from src.sources.songs.SongsSourceBase import SongsSourceBase
+from src.sources.SongSearchItem import SongSearchItem
+from ..utils import list_or_empty
+
 
 class File(SongsSourceBase):
 
     INPUT_FILE = []
     def __init__(self, user_args):
-        self.INPUT_FILE = user_args["inputTextfile"] or [os.getenv("INPUT_FILE_PATH")] or self.INPUT_FILE
+        self.INPUT_FILE = user_args["inputTextfile"] or list_or_empty(os.getenv("INPUT_FILE_PATH"))
 
     def get_song_list(self) -> list[str]:
         search_list = []

@@ -2,6 +2,7 @@ import os
 
 from src.sources.SongSearchItem import SongSearchItem
 from src.sources.songs.SongsSourceBase import SongsSourceBase
+from ..utils import list_or_empty
 
 
 class Directory(SongsSourceBase):
@@ -11,7 +12,7 @@ class Directory(SongsSourceBase):
     INPUT_PATH = []
 
     def __init__(self, user_args):
-        self.INPUT_PATH = user_args["input_path"] or os.getenv("INPUT_DIRECTORY_PATH") or self.INPUT_PATH
+        self.INPUT_PATH = user_args["input_path"] or list_or_empty(os.getenv("INPUT_DIRECTORY_PATH"))
 
         if self.INPUT_PATH and not all([os.path.isdir(input_dir)] for input_dir in self.INPUT_PATH):
             self.raise_error(f'{self.INPUT_PATH} is not a valid directory. Exiting...')

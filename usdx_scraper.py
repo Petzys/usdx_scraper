@@ -96,20 +96,20 @@ def main():
         UsdbAnimuxDe.__class__:UsdbAnimuxDe(user_args),
     }
 
-    song_sources = {
-        Spotify.__class__:Spotify(user_args),
-        Directory.__class__:Directory(user_args),
-        File.__class__:File(user_args),
-    }
+    song_sources = [
+        Spotify(user_args),
+        Directory(user_args),
+        File(user_args),
+    ]
 
-    media_sources = {
-        Youtube.__class__:Youtube(user_args, lyrics_source=lyrics_sources[UsdbAnimuxDe.__class__]), # TODO Change so we can have multiple lyrics sources
-    }
+    media_sources = [
+        Youtube(user_args, lyrics_source=lyrics_sources[UsdbAnimuxDe.__class__]), # TODO Change so we can have multiple lyrics sources
+    ]
 
     # Go through all the sources and get a list of all songs
     search_list = []
     for source in song_sources:
-        search_list += song_sources[source].get_song_list()
+        search_list += source.get_song_list()
 
     # Remove duplicate elements in the list.
     # Happens if the songs are in multiple sources.
@@ -136,7 +136,7 @@ def main():
 
     # Right now we only have one media source, so we can just use that one.
     #todo think about adding more sources. YouTube can't be the only source.
-    media_source = media_sources[Youtube.__class__]
+    media_source = media_sources[0]
 
     # Download songs
 
